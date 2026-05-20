@@ -1,0 +1,17 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "types": [],
+    "baseUrl": "..",
+    "rootDir": "..",
+    "composite": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "noEmit": false,
+    "outDir": "../.artifacts/package-types"
+  },
+  "include": [
+    "./@types/**/*.d.ts"
+  ]
+}

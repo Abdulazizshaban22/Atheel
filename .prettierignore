@@ -1,0 +1,7 @@
+node_modules
+.dist
+.next
+coverage
+runtime_uploads
+runtime_artifacts
+packages/db/prisma/migrations

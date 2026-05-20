@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig.package-base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../.artifacts/package-types/twinspec-kernel.tsbuildinfo"
+  },
+  "references": [
+    { "path": "../twin-kernel" }
+  ],
+  "include": [
+    "src/**/*.ts",
+    "../@types/**/*.d.ts"
+  ]
+}

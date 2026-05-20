@@ -1,0 +1,14 @@
+{
+  "name": "@madar/doc-kernel",
+  "private": true,
+  "version": "0.1.0",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "archiver": "^6.0.2",
+    "markdown-it": "^14.1.0",
+    "pptxgenjs": "^3.12.0",
+    "puppeteer-core": "^23.10.4",
+    "qrcode": "^1.5.4"
+  }
+}

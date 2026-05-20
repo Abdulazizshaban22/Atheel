@@ -1,0 +1,85 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "title": "API Request Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [{ "expr": "rate(http_requests_total{service=\"atheel-api\"}[5m])", "legendFormat": "{{method}} {{route}}" }]
+    },
+    {
+      "title": "API Latency P95",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [{ "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{service=\"atheel-api\"}[5m]))", "legendFormat": "P95" }]
+    },
+    {
+      "title": "Error Rate",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
+      "targets": [{ "expr": "sum(rate(http_requests_total{service=\"atheel-api\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{service=\"atheel-api\"}[5m])) * 100", "legendFormat": "Error %" }]
+    },
+    {
+      "title": "Active DB Connections",
+      "type": "gauge",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 8 },
+      "targets": [{ "expr": "prisma_pool_connections_active{service=\"atheel-api\"}", "legendFormat": "Active" }]
+    },
+    {
+      "title": "Queue Depth",
+      "type": "bargauge",
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 8 },
+      "targets": [{ "expr": "bullmq_queue_waiting{service=\"atheel-worker\"}", "legendFormat": "{{queue}}" }]
+    },
+    {
+      "title": "Brain Domain Queries",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "targets": [{ "expr": "rate(brain_retrieval_queries_total[5m])", "legendFormat": "{{domain}}" }]
+    },
+    {
+      "title": "RAG Retrieval Latency",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "targets": [{ "expr": "histogram_quantile(0.95, rate(rag_query_duration_seconds_bucket[5m]))", "legendFormat": "P95 {{strategy}}" }]
+    },
+    {
+      "title": "Agent Runtime Jobs",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 20 },
+      "targets": [
+        { "expr": "agent_jobs_total{status=\"completed\"}", "legendFormat": "Completed" },
+        { "expr": "agent_jobs_total{status=\"queued\"}", "legendFormat": "Queued" },
+        { "expr": "agent_jobs_total{status=\"escalated\"}", "legendFormat": "Escalated" }
+      ]
+    },
+    {
+      "title": "Embedding Coverage %",
+      "type": "gauge",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 20 },
+      "targets": [{ "expr": "knowledge_embeddings_total / knowledge_chunks_total * 100", "legendFormat": "Coverage" }],
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "value": 0, "color": "red" }, { "value": 50, "color": "yellow" }, { "value": 80, "color": "green" }] } } }
+    },
+    {
+      "title": "Worker Queue Processing",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "targets": [
+        { "expr": "rate(bullmq_jobs_completed_total{service=\"atheel-worker\"}[5m])", "legendFormat": "Completed/s {{queue}}" },
+        { "expr": "rate(bullmq_jobs_failed_total{service=\"atheel-worker\"}[5m])", "legendFormat": "Failed/s {{queue}}" }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["atheel", "production"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Atheel Platform — Production Dashboard",
+  "uid": "atheel-prod-v1"
+}

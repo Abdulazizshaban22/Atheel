@@ -1,0 +1,29 @@
+{
+  "name": "@madar/exports-svc",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "nest start --watch",
+    "build": "nest build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start:prod": "node dist/main.js"
+  },
+  "dependencies": {
+    "@madar/doc-kernel": "workspace:*",
+    "@madar/object-store": "workspace:*",
+    "@nestjs/common": "^11.0.3",
+    "@nestjs/config": "^4.0.1",
+    "@nestjs/core": "^11.0.3",
+    "@nestjs/microservices": "^11.0.3",
+    "amqplib": "^0.10.4",
+    "amqp-connection-manager": "^4.1.14",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.1",
+    "@nestjs/schematics": "^11.0.0",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.3"
+  }
+}

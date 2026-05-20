@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig.package-base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../.artifacts/package-types/engines-kernel.tsbuildinfo"
+  },
+  "references": [
+    { "path": "../culture-sa-kernel" }
+  ],
+  "include": [
+    "src/**/*.ts",
+    "../@types/**/*.d.ts"
+  ]
+}

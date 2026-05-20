@@ -1,0 +1,59 @@
+{
+  "info": {
+    "name": "Madar Culture API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/health"
+      }
+    },
+    {
+      "name": "Organizations List",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/organizations"
+      }
+    },
+    {
+      "name": "Projects List",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/projects"
+      }
+    },
+    {
+      "name": "Analytics Dashboard",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/analytics/dashboard"
+      }
+    },
+    {
+      "name": "AI Content Assist",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"prompt\": \"لخص هذه المادة التراثية\", \"mode\": \"summary\", \"targetLanguage\": \"ar\"}"
+        },
+        "url": "{{baseUrl}}/api/ai/content-assist"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000"
+    }
+  ]
+}

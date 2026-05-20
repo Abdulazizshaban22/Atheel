@@ -1,0 +1,2666 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+
+enum OrgSector { government semi_government museum private developer ngo }
+enum ProjectStatus { draft planning in_progress paused completed archived }
+enum ContentStatus { draft in_review approved published archived }
+enum ContentType { article stop_text audio_script label educational campaign presentation strategy feasibility approval_packet }
+enum ExperienceType { museum route event exhibition food_culture }
+enum PlatformRole {
+  super_admin
+  org_admin
+  project_manager
+  curator
+  content_editor
+  experience_designer
+  analyst
+  viewer
+}
+
+// Wave55: multi-device refresh sessions with rotation + reuse detection
+enum RefreshSessionState { active revoked compromised expired }
+
+// Wave55: fine-grained authorization rules (resource/action)
+enum PolicyEffect { allow deny }
+
+// Wave56: Capability Packs (تشغيل المنصة كـ مشغل متعدد المجالات)
+enum CapabilityDomain { core culture heritage ops ai twin compliance radar integration other }
+
+enum ApprovalStatus {
+  draft
+  submitted
+  in_review
+  approved
+  rejected
+  changes_requested
+  cancelled
+}
+enum ApprovalEntityType {
+  project
+  content
+  experience
+  // Wave48: برامج تشغيل + مواسم + سجل تراث + حزم امتثال/تراخيص
+  program
+  season
+  heritage_asset
+  licensing_checklist
+}
+enum AuditSeverity { info warning critical }
+
+model User {
+  id               String               @id @default(cuid())
+  email            String               @unique
+  displayName      String
+  isActive         Boolean              @default(true)
+  passwordHash     String?
+  // Deprecated (Wave55): used by early auth scaffolding. Keep for backward compatibility.
+  refreshTokenHash String?
+  lastLoginAt      DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  memberships      OrganizationMember[]
+  attachments      Attachment[]         @relation("AttachmentUploader")
+  auditLogs        AuditLog[]           @relation("AuditActor")
+  createdHeritageAssets HeritageAsset[] @relation("UserCreatedHeritageAssets")
+
+  refreshSessions   RefreshSession[]
+  policyRules       PolicyRule[]
+
+  @@index([email])
+  @@index([isActive])
+}
+
+// Wave55: multi-device refresh sessions
+model RefreshSession {
+  id            String               @id @default(cuid())
+  userId        String
+  familyId      String
+  state         RefreshSessionState @default(active)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  lastSeenAt    DateTime?
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  compromisedAt DateTime?
+  ip            String?
+  userAgent     String?
+  deviceName    String?
+
+  currentTokenId String
+  currentToken   RefreshSessionToken   @relation("CurrentSessionToken", fields: [currentTokenId], references: [id])
+  tokens         RefreshSessionToken[] @relation("SessionTokens")
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, state])
+  @@index([familyId])
+}
+
+model RefreshSessionToken {
+  id               String   @id @default(cuid())
+  sessionId        String
+  tokenHash        String   @unique
+  issuedAt         DateTime @default(now())
+  usedAt           DateTime?
+  revokedAt        DateTime?
+  replacedByTokenId String?
+
+  session          RefreshSession  @relation("SessionTokens", fields: [sessionId], references: [id], onDelete: Cascade)
+  currentOf        RefreshSession? @relation("CurrentSessionToken")
+
+  @@index([sessionId, issuedAt])
+  @@index([sessionId, usedAt])
+}
+
+// Wave55: fine-grained policy rules
+model PolicyRule {
+  id             String       @id @default(cuid())
+  organizationId String
+  role           PlatformRole?
+  userId         String?
+  resource       String
+  action         String
+  effect         PolicyEffect @default(allow)
+  conditions     Json?
+  priority       Int          @default(100)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, role, resource, action])
+  @@index([organizationId, userId])
+}
+
+model Organization {
+  id          String               @id @default(cuid())
+  nameAr      String
+  nameEn      String?
+  sector      OrgSector
+  city        String?
+  country     String               @default("SA")
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  projects    Project[]
+  content     ContentItem[]
+  members     OrganizationMember[]
+  attachments Attachment[]
+  approvals   ApprovalRequest[]
+  auditLogs   AuditLog[]
+  heritageAssets HeritageAsset[]
+
+  policyRules    PolicyRule[]
+  capabilities   OrganizationCapability[]
+
+  @@index([sector])
+  @@index([country, city])
+}
+
+model OrganizationMember {
+  id             String       @id @default(cuid())
+  userId         String
+  organizationId String
+  role           PlatformRole
+  createdAt      DateTime     @default(now())
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId, role])
+  @@index([organizationId, role])
+}
+
+// Wave56: Capability Packs (Catalog + per-organization enablement)
+model CapabilityPack {
+  id             String           @id @default(cuid())
+  code           String           @unique
+  nameAr         String
+  nameEn         String?
+  domain         CapabilityDomain @default(other)
+  descriptionAr  String?
+  modules        String[]
+  requires       String[]
+  defaultEnabled Boolean          @default(false)
+  manifest       Json?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  orgs           OrganizationCapability[]
+
+  @@index([domain])
+}
+
+model OrganizationCapability {
+  id              String         @id @default(cuid())
+  organizationId  String
+  packId          String
+  isEnabled       Boolean        @default(true)
+  enabledAt       DateTime?
+  disabledAt      DateTime?
+  config          Json?
+  updatedByUserId String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  pack            CapabilityPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  updatedBy       User?          @relation(fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, packId], name: "organizationId_packId")
+  @@index([organizationId, isEnabled])
+}
+
+
+model Project {
+  id               String           @id @default(cuid())
+  organizationId   String
+  code             String
+  nameAr           String
+  status           ProjectStatus    @default(draft)
+  progressPercent  Int              @default(0)
+  startDate        DateTime?
+  endDate          DateTime?
+  ownerDisplayName String?
+  budgetEstimate   Decimal?         @db.Decimal(14, 2)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  content          ContentItem[]
+  experiences      VisitorExperience[]
+
+  @@unique([organizationId, code])
+  @@index([status])
+}
+
+model ContentItem {
+  id             String        @id @default(cuid())
+  organizationId String
+  projectId      String?
+  title          String
+  languageCode   String
+  contentType    ContentType
+  status         ContentStatus @default(draft)
+  summary        String?
+  versionNo      Int           @default(1)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project        Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, status])
+  @@index([contentType, languageCode])
+}
+
+model VisitorExperience {
+  id                     String         @id @default(cuid())
+  projectId              String
+  titleAr                String
+  twinId                 String?        @unique
+  experienceType         ExperienceType
+  durationMinutesDefault Int
+  publishStatus          String         @default("draft")
+  targetAudience         String?
+  accessibilityFlags     Json?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  project                Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  twin                   Twin?          @relation("ExperienceTwin", fields: [twinId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, publishStatus])
+  @@index([experienceType])
+}
+
+model Attachment {
+  id              String       @id @default(cuid())
+  organizationId  String
+  // NOTE: generalized polymorphic link (e.g., project/content/experience/competition/cultural_signal/...)
+  // Keep approvals.entityType as enum, but attachments.entityType is flexible to support new modules without enum migrations.
+  entityType      String?
+  entityId        String?
+  originalName    String
+  mimeType        String?
+  extension       String?
+  sizeBytes       Int
+  storageProvider String       @default("local")
+  storagePath     String
+  checksumSha256  String?
+  uploadedByUserId String?
+  uploadedAt      DateTime     @default(now())
+  metadata        Json?
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  uploadedBy      User?        @relation("AttachmentUploader", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, uploadedAt])
+  @@index([entityType, entityId])
+}
+
+model ApprovalRequest {
+  id                String             @id @default(cuid())
+  organizationId    String
+  entityType        ApprovalEntityType
+  entityId          String
+  title             String
+  status            ApprovalStatus     @default(draft)
+  submittedByUserId String?
+  currentApproverId String?
+  decisionNote      String?
+  requestedChanges  String?
+  submittedAt       DateTime?
+  decidedAt         DateTime?
+  dueAt             DateTime?
+  // Wave46: routing context for smarter Skill Matrix (violationType/domain/region)
+  contextViolationType String?
+  contextDomain        String?
+  contextRegion        String?
+  payloadSnapshot   Json?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([entityType, entityId])
+  @@index([organizationId, contextViolationType])
+  @@index([organizationId, contextDomain])
+  @@index([organizationId, contextRegion])
+}
+
+
+// Wave45: Auto-routing Skill Matrix + Ops Settings + SLO burn-rate alerts
+model OpsSettings {
+  id                       String       @id @default(cuid())
+  organizationId           String       @unique
+  quietHoursStart          String?      // "23:00"
+  quietHoursEnd            String?      // "07:00"
+  quietHoursTz             String       @default("Asia/Riyadh")
+  outboxDedupWindowMinutes Int          @default(30)
+  // Wave46: approvals routing fairness/cooldown settings
+  approvalsReviewerCooldownMinutes Int   @default(5)
+  approvalsMaxActivePerReviewer    Int   @default(10)
+  createdAt                DateTime     @default(now())
+  updatedAt                DateTime     @updatedAt
+
+  organization             Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+// Wave46: routing fairness state (round-robin + cooldown)
+model ApprovalRoutingState {
+  id             String       @id @default(cuid())
+  organizationId String
+  userId         String
+  lastAssignedAt DateTime?
+  assignedCount  Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId, lastAssignedAt])
+}
+
+// Wave46: incidents as first-class objects (timeline + ack/close/mute)
+model Incident {
+  id             String       @id @default(cuid())
+  organizationId String
+  incidentKey    String
+  title          String?
+  severity       String       @default("warning")
+  status         String       @default("open") // open | ack | muted | closed
+  mutedUntil     DateTime?
+  ackedAt        DateTime?
+  ackedByUserId  String?
+  closedAt       DateTime?
+  closedByUserId String?
+  firstSeenAt    DateTime     @default(now())
+  lastSeenAt     DateTime     @default(now())
+  eventCount     Int          @default(0)
+  metaJson       Json?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  events         IncidentEvent[]
+
+  @@unique([organizationId, incidentKey])
+  @@index([organizationId, status, lastSeenAt])
+}
+
+model IncidentEvent {
+  id             String       @id @default(cuid())
+  incidentId     String
+  organizationId String
+  eventType      String
+  actorType      String       @default("system") // user | worker | system
+  actorUserId    String?
+  message        String?
+  payload        Json?
+  createdAt      DateTime     @default(now())
+
+  incident       Incident     @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId, createdAt])
+  @@index([organizationId, createdAt])
+}
+
+model ApprovalReviewerSkill {
+  id             String       @id @default(cuid())
+  organizationId String
+  userId         String
+  dimension      String       // e.g. "entityType:content"
+  score          Float        @default(0)
+  evidenceCount  Int          @default(0)
+  lastUpdatedAt  DateTime     @default(now())
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId, dimension])
+  @@index([organizationId, userId])
+  @@index([organizationId, dimension])
+}
+
+model SloPolicy {
+  id                    String       @id @default(cuid())
+  organizationId        String?
+  name                  String
+  indicator             String       // outbox_delivery | workflow_sla | approvals_sla
+  objectivePercent      Float        @default(99.9)
+  errorBudgetWindowDays Int          @default(30)
+  shortWindowMinutes    Int          @default(5)
+  longWindowMinutes     Int          @default(60)
+  isEnabled             Boolean      @default(true)
+  metaJson              Json?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  organization          Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  alerts                SloAlert[]
+
+  @@index([organizationId, isEnabled, updatedAt])
+  @@index([indicator, isEnabled])
+}
+
+model SloAlert {
+  id                 String       @id @default(cuid())
+  organizationId     String?
+  policyId           String
+  burnRateShort      Float
+  burnRateLong       Float
+  errorRateShort     Float
+  errorRateLong      Float
+  windowShortMinutes Int
+  windowLongMinutes  Int
+  status             String       @default("open") // open | ack | resolved
+  metaJson           Json?
+  createdAt          DateTime     @default(now())
+
+  policy             SloPolicy    @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  organization       Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([policyId, createdAt])
+  @@index([organizationId, createdAt])
+}
+
+model AuditLog {
+  id             String       @id @default(cuid())
+  organizationId String?
+  actorUserId    String?
+  action         String
+  entityType     String?
+  entityId       String?
+  severity       AuditSeverity @default(info)
+  message        String?
+  before         Json?
+  after          Json?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime     @default(now())
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  actor          User?         @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([entityType, entityId])
+  @@index([severity])
+}
+
+
+enum AiProviderKind {
+  mock
+  vllm_openai_compatible
+}
+
+enum KnowledgeSourceType {
+  manual
+  file
+  url
+  template
+}
+
+enum AgentRunStatus {
+  queued
+  running
+  completed
+  needs_input
+  failed
+}
+
+model AiProvider {
+  id                 String          @id
+  organizationId     String?
+  organization       Organization?   @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  name               String
+  kind               AiProviderKind
+  baseUrl            String?
+  apiKeyEnvName      String?
+  modelName          String?
+  isActive           Boolean         @default(true)
+  temperatureDefault Float?
+  maxTokensDefault   Int?
+  metadata           Json?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@index([organizationId, isActive])
+}
+
+model KnowledgeDocument {
+  id              String              @id
+  organizationId  String?
+  organization    Organization?       @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  projectId       String?
+  project         Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  title           String
+  sourceType      KnowledgeSourceType
+  sourceRef       String?
+  languageCode    String              @default("ar")
+  tags            String[]            @default([])
+  text            String
+  chunkCount      Int                 @default(0)
+  metadata        Json?
+  createdByUserId String?
+  createdBy       User?               @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  chunks          KnowledgeChunk[]
+
+  @@index([organizationId, projectId])
+  @@index([sourceType])
+  @@index([tags])
+}
+
+model KnowledgeChunk {
+  id             String            @id
+  documentId     String
+  document       KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  organizationId String?
+  organization   Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  projectId      String?
+  project        Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  title          String?
+  sourceType     KnowledgeSourceType?
+  languageCode   String?
+  text           String
+  tags           String[]          @default([])
+  chunkIndex     Int
+  tokenEstimate  Int?
+  metadata       Json?
+  createdAt      DateTime          @default(now())
+
+  @@index([documentId, chunkIndex])
+  @@index([organizationId, projectId])
+  @@index([tags])
+}
+
+model KnowledgeChunkEmbedding {
+  id         String @id
+  documentId String
+  chunkId    String @unique
+  embeddingJson Json
+  // Wave39: pgvector column (optional, enabled when extension is installed)
+  embeddingVec Unsupported("vector")?
+  dims       Int
+  modelName  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  document   KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  chunk      KnowledgeChunk    @relation(fields: [chunkId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([modelName])
+}
+
+
+
+model AgentRun {
+  id              String         @id
+  organizationId  String?
+  organization    Organization?  @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  projectId       String?
+  project         Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  objective       String
+  status          AgentRunStatus
+  steps           Json
+  resultSummary   String?
+  createdByUserId String?
+  createdBy       User?          @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([organizationId, projectId, status])
+}
+
+model PromptTemplate {
+  id             String        @id
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  code           String
+  name           String
+  description    String?
+  templateBody   String
+  inputSchema    Json?
+  workspaceId    String?
+  tags           String[]      @default([])
+  modelClass     String?
+  createdByUserId String?
+  isActive       Boolean       @default(true)
+  version        Int           @default(1)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([organizationId, code, version])
+  @@index([organizationId, isActive])
+}
+
+
+model WorkflowInstance {
+  id             String   @id
+  templateId     String
+  code           String
+  nameAr         String
+  organizationId String?
+  projectId      String?
+  status         String
+  parametersJson String   @db.Text
+  designerGraphJson String?  @db.Text
+  createdByUserId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, projectId])
+  @@index([templateId])
+  @@index([status])
+}
+
+model WorkflowRun {
+  id                      String   @id
+  instanceId              String?
+  templateId              String
+  organizationId          String?
+  projectId               String?
+  status                  String
+  totalSteps              Int
+  estimatedDurationMinutes Int
+  aiCallsEstimate         Int
+  humanCheckpoints        Int
+  metricsJson             String   @db.Text
+  traceJson               String   @db.Text
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@index([organizationId, projectId])
+  @@index([templateId])
+  @@index([status])
+}
+
+model WorkflowPack {
+  id                    String   @id
+  name                  String
+  organizationId        String?
+  projectId             String?
+  selectedTemplateIdsJson String @db.Text
+  manifestJson          String   @db.Text
+  payloadJson           String   @db.Text
+  createdByUserId       String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([organizationId, projectId])
+}
+
+
+enum WorkspaceStatus {
+  draft
+  active
+  paused
+  archived
+}
+
+enum ProgramStatus {
+  draft
+  active
+  on_hold
+  completed
+  archived
+}
+
+enum WorkflowExecutionPriority {
+  low
+  normal
+  high
+  urgent
+}
+
+enum WorkflowExecutionStatus {
+  queued
+  running
+  waiting_input
+  completed
+  failed
+  paused
+}
+
+model Workspace {
+  id              String   @id
+  organizationId  String?
+  code            String
+  name            String
+  description     String?
+  status          WorkspaceStatus @default(draft)
+  defaultLanguage String   @default("ar")
+  settingsJson    String   @db.Text
+  aiRoutingPolicy Json?
+  ragPolicy       Json?
+  guardrails      Json?
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([organizationId, code])
+  @@index([organizationId, status])
+}
+
+model Program {
+  id                 String   @id
+  organizationId     String?
+  code               String
+  nameAr             String
+  description        String?
+  status             ProgramStatus @default(draft)
+  strategicValueScore Int     @default(0)
+  readinessScore     Int      @default(0)
+  portfolioValueSar  Float?
+  metadataJson       String   @db.Text
+  projectIdsJson     String   @db.Text
+  workflowInstanceIdsJson String @db.Text
+  createdByUserId    String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([organizationId, code])
+  @@index([organizationId, status])
+}
+
+model WorkflowExecution {
+  id               String   @id
+  workflowRunId     String?
+  instanceId        String?
+  templateId        String
+  organizationId    String?
+  projectId         String?
+  priority          WorkflowExecutionPriority @default(normal)
+  status            WorkflowExecutionStatus @default(queued)
+  queueScore        Float   @default(0)
+  currentStepIndex  Int     @default(0)
+  stepsJson         String  @db.Text
+  inputsJson        String  @db.Text
+  outputsJson       String  @db.Text
+  metricsJson       String  @db.Text
+  slaJson           String  @db.Text
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  startedAt         DateTime?
+  completedAt       DateTime?
+
+  @@index([organizationId, projectId])
+  @@index([status, priority])
+  @@index([instanceId])
+}
+
+model WorkflowExecutionEvent {
+  id               String   @id
+  executionId      String
+  organizationId   String?
+  projectId        String?
+  type             String
+  stepId           String?
+  messageAr        String
+  payloadJson      String?  @db.Text
+  idempotencyKey   String?  @unique
+  attempt          Int      @default(0)
+  actor            String?
+  createdAt        DateTime @default(now())
+
+  @@index([executionId, createdAt])
+  @@index([organizationId, projectId])
+}
+
+model WorkflowTemplateGraph {
+  id          String   @id @default(cuid())
+  templateId  String   @unique
+  nodesJson   String   @db.Text
+  edgesJson   String   @db.Text
+  metaJson    String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+
+enum EvidenceKind {
+  official_sa
+  unesco
+  saudipedia
+  misk
+  alula
+  other
+}
+
+enum InspirationMediaType {
+  image
+  video
+  pdf
+  link
+}
+
+enum BrainstormBoardStatus {
+  active
+  archived
+}
+
+enum IdeaVaultState {
+  raw
+  shortlisted
+  developed
+  pitch_ready
+  delivered
+  archived
+}
+
+model InspirationSource {
+  id              String   @id
+  organizationId  String?
+  nameAr          String
+  url             String
+  kind            EvidenceKind @default(other)
+  tags            String[] @default([])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([kind])
+}
+
+model InspirationAsset {
+  id             String   @id
+  organizationId String?
+  projectId      String?
+  sourceId       String?
+  titleAr        String
+  url            String
+  mediaType      InspirationMediaType @default(link)
+  regionCode     String?
+  themeCode      String?
+  tags           String[] @default([])
+  notesAr        String?
+  createdByUserId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, projectId])
+  @@index([sourceId])
+  @@index([mediaType])
+}
+
+model BrainstormBoard {
+  id             String @id
+  organizationId String?
+  projectId      String?
+  titleAr        String
+  status         BrainstormBoardStatus @default(active)
+  miroBoardUrl   String?
+  createdByUserId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, projectId])
+  @@index([status])
+}
+
+model BrainstormNote {
+  id        String @id
+  boardId   String
+  textAr    String
+  tags      String[] @default([])
+  x         Float?
+  y         Float?
+  color     String?
+  createdByUserId String?
+  createdAt DateTime @default(now())
+
+  @@index([boardId, createdAt])
+}
+
+model BrainstormVoteSession {
+  id           String @id
+  boardId      String
+  status       String @default("open")
+  votesPerUser Int    @default(5)
+  createdAt    DateTime @default(now())
+  closedAt     DateTime?
+
+  @@index([boardId, status])
+}
+
+model BrainstormVote {
+  id        String @id
+  sessionId String
+  noteId    String
+  userId    String?
+  createdAt DateTime @default(now())
+
+  @@index([sessionId, noteId])
+  @@index([sessionId, userId])
+}
+
+model IdeaVault {
+  id             String @id
+  organizationId String?
+  projectId      String?
+  state          IdeaVaultState @default(raw)
+  domain         String
+  titleAr        String
+  oneLinerAr     String
+  audienceAr     String
+  regionAr       String?
+  formatAr       String
+  whyNowAr       String
+  experienceSketchAr String
+  deliverablesAr String[] @default([])
+  kpisAr         String[] @default([])
+  risksAr        String[] @default([])
+  evidenceMinCount Int @default(3)
+  brainstormBoardId String?
+  createdByUserId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, projectId, state])
+}
+
+model IdeaEvidence {
+  id        String @id
+  ideaId    String
+  titleAr   String
+  url       String?
+  kind      EvidenceKind @default(other)
+  citationAr String?
+  createdAt DateTime @default(now())
+
+  @@index([ideaId, kind])
+}
+
+model NarrativeDraft {
+  id        String @id
+  ideaId    String @unique
+  status    String @default("draft")
+  loglineAr String
+  act1      String
+  act2      String
+  act3      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([organizationId])
+  @@index([projectId])
+}
+
+// --- Digital Twin (Twin) ---
+
+enum TwinKind { venue route exhibition district }
+enum TwinStatus { draft active paused archived }
+enum TwinCoordinateSystem { wgs84 local_xy }
+enum TwinNodeKind { entry exit exhibit activity service rest corridor staff_only hazard }
+enum TwinEdgeKind { path stairs elevator queue_lane restricted }
+enum TwinLayerKind { geojson gltf three_d_tiles image pdf link }
+enum TwinTelemetryKind { footfall occupancy temperature noise incident manual_note }
+
+// --- Approval Packet (formal package for decision + autogenerated artifacts) ---
+
+enum ApprovalPacketStatus { draft submitted approved rejected archived }
+
+model ApprovalPacket {
+  id              String   @id
+  organizationId  String?
+  projectId       String?
+  experienceId    String?
+  twinId          String?
+  simulationRunId String
+  scenarioKey     String   @default("baseline")
+  title           String
+  status          ApprovalPacketStatus @default(draft)
+  version         Int      @default(1)
+  sectionsJson    String   @db.Text
+  artifactsJson   String   @db.Text
+  generatedAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId, projectId])
+  @@index([experienceId])
+  @@index([twinId])
+  @@index([simulationRunId])
+}
+
+model Twin {
+  id               String   @id
+  organizationId   String?
+  projectId        String?
+  kind             TwinKind
+  nameAr           String
+  status           TwinStatus @default(draft)
+  coordinateSystem TwinCoordinateSystem @default(local_xy)
+  bboxJson         String
+  metadata         Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  nodes            TwinNode[]
+  edges            TwinEdge[]
+  layers           TwinLayer[]
+  simulations      TwinSimulationRun[]
+  telemetry        TwinTelemetryEvent[]
+
+  // Optional: one-to-one link to a VisitorExperience (auto-created Twin per experience)
+  experience       VisitorExperience? @relation("ExperienceTwin")
+
+  @@index([organizationId, projectId])
+  @@index([status])
+}
+
+model TwinNode {
+  id                 String @id
+  twinId             String
+  nameAr             String
+  kind               TwinNodeKind
+  capacity           Int
+  dwellTimeSecondsAvg Int
+  posJson            String
+  tags               String[] @default([])
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  twin               Twin @relation(fields: [twinId], references: [id], onDelete: Cascade)
+
+  @@index([twinId, kind])
+}
+
+model TwinEdge {
+  id              String @id
+  twinId          String
+  fromNodeId      String
+  toNodeId        String
+  kind            TwinEdgeKind
+  distanceMeters  Int
+  travelTimeSeconds Int
+  oneWay          Boolean @default(false)
+  widthMeters     Float?
+  capacityPerMinute Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  twin            Twin @relation(fields: [twinId], references: [id], onDelete: Cascade)
+
+  @@index([twinId])
+  @@index([fromNodeId, toNodeId])
+}
+
+model TwinLayer {
+  id          String @id
+  twinId      String
+  nameAr      String
+  kind        TwinLayerKind
+  uri         String
+  contentType String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  twin        Twin @relation(fields: [twinId], references: [id], onDelete: Cascade)
+
+  @@index([twinId, kind])
+}
+
+model TwinSimulationRun {
+  id         String @id
+  twinId     String
+  status     String @default("queued")
+  profileJson String
+  resultJson  String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  twin       Twin @relation(fields: [twinId], references: [id], onDelete: Cascade)
+
+  @@index([twinId, status])
+}
+
+model TwinTelemetryEvent {
+  id        String @id
+  twinId    String
+  ts        DateTime
+  kind      TwinTelemetryKind
+  nodeId    String?
+  value     Float?
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  twin      Twin @relation(fields: [twinId], references: [id], onDelete: Cascade)
+
+  @@index([twinId, ts])
+  @@index([kind])
+}
+
+
+enum IoTDeviceKind { sensor gateway camera counter beacon manual }
+
+model IoTDevice {
+  id            String @id
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  twinId        String?
+  twin          Twin? @relation(fields: [twinId], references: [id], onDelete: SetNull)
+  nameAr        String
+  kind          IoTDeviceKind
+  secretKeyHash String
+  isActive      Boolean @default(true)
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  telemetry     IoTTelemetryEvent[]
+
+  @@index([organizationId, twinId])
+  @@index([isActive])
+}
+
+model IoTTelemetryEvent {
+  id             String @id
+  deviceId        String
+  device          IoTDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  organizationId  String?
+  twinId          String?
+  nodeId          String?
+  ts              DateTime
+  kind            TwinTelemetryKind
+  value           Float?
+  payload         Json?
+  createdAt       DateTime @default(now())
+
+  @@index([deviceId, ts])
+  @@index([twinId, ts])
+  @@index([kind])
+}
+
+
+
+// Wave13: Innovation Engine Suite (Inspiration Boards + Narratives + Impact + Risks + Guides + Templates)
+
+enum InspirationBoardVisibility { private org public }
+
+enum RiskCategory { safety heritage operations reputation compliance }
+
+enum RiskLevel { low medium high }
+
+enum RiskStatus { open mitigating closed }
+
+enum NarrativeVariant { A B single }
+
+enum VisitorPersona { family student tourist expert }
+
+enum DocCheckStatus { pass needs_fix }
+
+enum HeritageSourceKind { official_sa unesco saudipedia other }
+
+model InspirationBoard {
+  id             String @id
+  organizationId String?
+  projectId      String?
+  titleAr        String
+  descriptionAr  String?
+  status         String @default("active")
+  visibility     InspirationBoardVisibility @default(org)
+  ownerUserId    String?
+  editorUserIds  String[]
+  viewerUserIds  String[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  items          InspirationBoardItem[]
+
+  @@index([organizationId])
+  @@index([projectId])
+}
+
+model InspirationBoardItem {
+  id        String @id
+  boardId   String
+  assetId   String
+  noteAr    String?
+  orderIndex Int @default(1)
+  createdAt DateTime @default(now())
+
+  board     InspirationBoard @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  @@index([boardId, orderIndex])
+}
+
+model NarrativeInstance {
+  id             String @id
+  organizationId String?
+  projectId      String?
+  ideaId         String?
+  experienceId   String?
+  twinId         String?
+  variant        NarrativeVariant @default(single)
+  titleAr        String
+  loglineAr      String
+  beatsJson      String
+  citationsJson  Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([ideaId])
+  @@index([experienceId])
+  @@index([twinId])
+}
+
+model ImpactSnapshot {
+  id             String @id
+  organizationId String?
+  projectId      String?
+  experienceId   String?
+  twinId         String?
+  simulationRunId String?
+  narrativeId    String?
+  score0to100    Float
+  breakdownJson  String
+  createdAt      DateTime @default(now())
+
+  @@index([experienceId])
+  @@index([twinId])
+}
+
+model Risk {
+  id             String @id
+  organizationId String?
+  projectId      String?
+  experienceId   String?
+  twinId         String?
+  category       RiskCategory
+  titleAr        String
+  descriptionAr  String?
+  likelihood1to5 Int
+  impact1to5     Int
+  score          Float
+  level          RiskLevel
+  mitigationAr   String?
+  ownerAr        String?
+  status         RiskStatus @default(open)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([experienceId])
+  @@index([twinId])
+  @@index([level])
+}
+
+model VisitorGuide {
+  id             String @id
+  organizationId String?
+  projectId      String?
+  experienceId   String
+  twinId         String?
+  persona        VisitorPersona
+  languageCode   String @default("ar")
+  contentItemIds String[]
+  summaryAr      String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([experienceId])
+}
+
+model HeritageSource {
+  id             String @id
+  organizationId String?
+  nameAr         String
+  url            String
+  kind           HeritageSourceKind
+  tags           String[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([kind])
+}
+
+model ProgramTemplate {
+  id             String @id
+  organizationId String?
+  code           String
+  nameAr         String
+  domain         String
+  manifestJson   String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([domain])
+}
+
+model DocumentationCheck {
+  id         String @id
+  entityType String
+  entityId   String
+  status     DocCheckStatus
+  issuesJson Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+}
+
+// --- Wave20.1: IIIF + Content Credentials (C2PA-inspired) + Experiments persistence ---
+
+model IiifManifest {
+  id             String   @id
+  organizationId String?
+  labelAr        String
+  labelEn        String?
+  attachmentIds  String[] @default([])
+  fulltextAr     String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, updatedAt])
+}
+
+model ContentCredential {
+  id              String   @id
+  organizationId  String?
+  subjectType     String
+  subjectId       String
+  subjectName     String?
+  sha256          String?
+  noteAr          String?
+  manifestJson    Json
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId, createdAt])
+  @@index([subjectType, subjectId])
+}
+
+model ImpactModel {
+  id             String   @id
+  organizationId String?
+  code           String
+  nameAr         String
+  descriptionAr  String?
+  modelJson      Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  experiments    Experiment[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId, updatedAt])
+}
+
+model Experiment {
+  id             String   @id
+  organizationId String?
+  projectId      String?
+  nameAr         String
+  objectiveAr    String?
+  status         String   @default("draft")
+  impactModelId  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  impactModel    ImpactModel?      @relation(fields: [impactModelId], references: [id], onDelete: SetNull)
+  variants       ExperimentVariant[]
+  events         ExperimentEvent[]
+
+  @@index([organizationId, projectId, status])
+  @@index([impactModelId])
+}
+
+model ExperimentVariant {
+  id            String   @id
+  experimentId  String
+  key           String
+  labelAr       String
+  payloadJson   Json?
+  createdAt     DateTime @default(now())
+
+  experiment    Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  events        ExperimentEvent[]
+
+  @@unique([experimentId, key])
+  @@index([experimentId, createdAt])
+}
+
+model ExperimentEvent {
+  id            String   @id
+  experimentId  String
+  variantId     String
+  variantKey    String
+  kind          String
+  metricsJson   Json?
+  userId        String?
+  ts            DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  experiment    Experiment       @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  variant       ExperimentVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([experimentId, ts])
+  @@index([variantId, ts])
+  @@index([kind])
+}
+
+// --- Wave21–25: Cultural Radar + Stories + Research + Authenticity + Official Packages + RAG Metrics ---
+
+model CulturalTaxonomyNode {
+  id             String   @id @default(cuid())
+  organizationId String?
+  code           String
+  labelAr        String
+  labelEn        String?
+  kind           String   @default("theme")
+  parentCode     String?
+  tags           String[] @default([])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, code])
+  @@index([organizationId, kind])
+  @@index([parentCode])
+}
+
+model CulturalSignal {
+  id                    String   @id @default(cuid())
+  organizationId        String?
+  projectId             String?
+  titleAr               String
+  descriptionAr         String?  @db.Text
+  taxonomyCode          String?
+  sectorCodes           String[] @default([])
+  regionCode            String?
+  status                String   @default("new")
+  // scoring inputs (0..1)
+  officialPriority      Float    @default(0)
+  communityInterest     Float    @default(0)
+  productionFeasibility Float    @default(0)
+  lossRisk              Float    @default(0)
+  score                 Float    @default(0)
+  metaJson              Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  evidence              CulturalSignalEvidence[]
+  entityLinks           CulturalSignalEntityLink[]
+
+  @@index([organizationId, projectId, status])
+  @@index([taxonomyCode])
+  @@index([regionCode])
+  @@index([score])
+}
+
+model CulturalSignalEvidence {
+  id          String   @id @default(cuid())
+  signalId    String
+  sourceTitle String
+  sourceUrl   String?
+  snippetAr   String?  @db.Text
+  weight      Float    @default(1)
+  createdAt   DateTime @default(now())
+
+  signal      CulturalSignal @relation(fields: [signalId], references: [id], onDelete: Cascade)
+
+  @@index([signalId, createdAt])
+}
+
+model CulturalSignalEntityLink {
+  id        String   @id @default(cuid())
+  signalId  String
+  entityId  String
+  relation  String   @default("related")
+  createdAt DateTime @default(now())
+
+  signal    CulturalSignal @relation(fields: [signalId], references: [id], onDelete: Cascade)
+
+  @@index([signalId])
+  @@index([entityId])
+}
+
+
+model CulturalSignalChange {
+  id           String   @id @default(cuid())
+  signalId     String
+  changeType   String   @default("updated")
+  previousHash String?
+  newHash      String
+  diffJson     Json?
+  actor        String   @default("radar_worker")
+  detectedAt   DateTime @default(now())
+
+  signal       CulturalSignal @relation(fields: [signalId], references: [id], onDelete: Cascade)
+
+  @@index([signalId, detectedAt])
+  @@index([changeType])
+}
+
+model InternalNotification {
+  id             String   @id @default(cuid())
+  organizationId String?
+  userId         String?
+  severity       String   @default("info") // info | warning | critical
+  titleAr        String
+  messageAr      String   @db.Text
+  entityType     String?
+  entityId       String?
+  metaJson       Json?
+  isRead         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  readAt         DateTime?
+
+  @@index([organizationId, userId, isRead, createdAt])
+  @@index([entityType, entityId])
+}
+
+model Story {
+  id             String   @id @default(cuid())
+  organizationId String?
+  projectId      String?
+  titleAr        String
+  narratorName   String?
+  locationAr     String?
+  status         String   @default("draft")
+  metaJson       Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  transcripts    StoryTranscript[]
+  consents       StoryConsent[]
+  entityLinks    StoryEntityLink[]
+
+  @@index([organizationId, projectId, status])
+}
+
+model StoryTranscript {
+  id           String   @id @default(cuid())
+  storyId      String
+  languageCode String   @default("ar")
+  kind         String   @default("text")
+  text         String   @db.Text
+  createdAt    DateTime @default(now())
+
+  story        Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@index([storyId, createdAt])
+}
+
+model StoryConsent {
+  id          String   @id @default(cuid())
+  storyId     String
+  consentType String   @default("publish")
+  signedBy    String?
+  signedAt    DateTime?
+  noteAr      String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  story       Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@index([storyId, createdAt])
+}
+
+model StoryEntityLink {
+  id          String   @id @default(cuid())
+  storyId     String
+  entityId    String
+  mentionText String?
+  confidence  Float    @default(0.7)
+  createdAt   DateTime @default(now())
+
+  story       Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@index([storyId])
+  @@index([entityId])
+}
+
+model ResearchDocument {
+  id             String   @id @default(cuid())
+  organizationId String?
+  projectId      String?
+  title          String
+  university     String?
+  degree         String?
+  year           Int?
+  authors        String?
+  sourceUrl      String?
+  attachmentId   String?
+  abstractAr     String?  @db.Text
+  fullTextAr     String?  @db.Text
+  metaJson       Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  runs           ResearchExtractionRun[]
+  entityLinks    ResearchEntityLink[]
+
+  @@index([organizationId, projectId])
+  @@index([year])
+}
+
+model ResearchExtractionRun {
+  id         String   @id @default(cuid())
+  documentId String
+  status     String   @default("queued")
+  startedAt  DateTime?
+  finishedAt DateTime?
+  notes      String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  document   ResearchDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, createdAt])
+  @@index([status])
+}
+
+model ResearchEntityLink {
+  id         String   @id @default(cuid())
+  documentId String
+  entityId   String
+  snippetAr  String?  @db.Text
+  confidence Float    @default(0.7)
+  createdAt  DateTime @default(now())
+
+  document   ResearchDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([entityId])
+}
+
+model AuthenticityAssessment {
+  id             String   @id @default(cuid())
+  organizationId String?
+  subjectType    String
+  subjectId      String
+  score          Float    @default(0)
+  factorsJson    Json?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, subjectType, subjectId])
+  @@index([score])
+}
+
+model EvidenceCheck {
+  id             String   @id @default(cuid())
+  organizationId String?
+  subjectType    String
+  subjectId      String
+  kind           String   @default("citations")
+  status         String   @default("pending")
+  issuesJson     Json?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, subjectType, subjectId])
+  @@index([kind, status])
+}
+
+model RagQualityMetric {
+  id              String   @id @default(cuid())
+  organizationId  String?
+  queryText       String   @db.Text
+  provider        String?
+  retrievedChunks Int      @default(0)
+  citationsCount  Int      @default(0)
+  groundingScore  Float    @default(0)
+  answerLength    Int      @default(0)
+  metaJson        Json?
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([groundingScore])
+}
+
+model OfficialSourceItem {
+  id             String   @id @default(cuid())
+  organizationId String?
+  sourceKind     String
+  externalId     String?
+  titleAr        String
+  titleEn        String?
+  year           Int?
+  url            String?
+  payloadJson    Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, sourceKind])
+  @@index([year])
+}
+
+// --- Wave25: Culture Graph (CIDOC-ready) ---
+
+model CulturalEntity {
+  id             String   @id @default(cuid())
+  organizationId String?
+  projectId      String?
+  entityType     String
+  canonicalNameAr String
+  canonicalNameEn String?
+  descriptionAr  String?  @db.Text
+  descriptionEn  String?  @db.Text
+  cidocClass     String?
+  externalRefs   Json?
+  tags           String[] @default([])
+  createdByUserId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  aliases        CulturalEntityAlias[]
+  provenance     CulturalProvenance[]
+  outgoing       CulturalRelation[] @relation("CulturalRelationFrom")
+  incoming       CulturalRelation[] @relation("CulturalRelationTo")
+
+  @@index([organizationId, projectId])
+  @@index([entityType])
+  @@index([canonicalNameAr])
+  @@index([updatedAt])
+}
+
+model CulturalEntityAlias {
+  id           String   @id @default(cuid())
+  entityId     String
+  name         String
+  languageCode String   @default("ar")
+  createdAt    DateTime @default(now())
+
+  entity       CulturalEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@unique([entityId, name, languageCode])
+  @@index([name])
+}
+
+model CulturalRelation {
+  id            String   @id @default(cuid())
+  organizationId String?
+  projectId      String?
+  fromEntityId   String
+  toEntityId     String
+  predicate      String
+  cidocProperty  String?
+  confidence     Float    @default(0.7)
+  evidenceTextAr String?   @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  fromEntity    CulturalEntity @relation("CulturalRelationFrom", fields: [fromEntityId], references: [id], onDelete: Cascade)
+  toEntity      CulturalEntity @relation("CulturalRelationTo", fields: [toEntityId], references: [id], onDelete: Cascade)
+  provenance    CulturalProvenance[]
+
+  @@index([organizationId, projectId])
+  @@index([fromEntityId])
+  @@index([toEntityId])
+  @@index([predicate])
+}
+
+model CulturalProvenance {
+  id             String   @id @default(cuid())
+  organizationId String?
+  projectId      String?
+  entityId       String?
+  relationId     String?
+  sourceTitle    String
+  sourceUrl      String?
+  citationAr     String?  @db.Text
+  capturedAt     DateTime?
+  capturedByUserId String?
+  createdAt      DateTime @default(now())
+
+  entity         CulturalEntity? @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  relation       CulturalRelation? @relation(fields: [relationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, projectId])
+  @@index([entityId])
+  @@index([relationId])
+  @@index([createdAt])
+}
+
+// --- Wave26: Competitions / Briefs Intelligence (RFP + Scope Matrix + Staffing + Exports) ---
+
+enum CompetitionStatus {
+  draft
+  analyzing
+  ready
+  submitted
+  archived
+}
+
+enum CompetitionRequirementCategory {
+  general_scope
+  event_architecture
+  graphic_design
+  overall_direction
+  out_of_scope
+}
+
+enum CompetitionDiscipline {
+  architecture
+  graphic
+  content_experience
+  visitor_experience
+  operations
+  finance
+  project_management
+}
+
+enum CompetitionRequirementStatus {
+  new
+  triaged
+  assigned
+  clarified
+  done
+}
+
+enum CompetitionAssignmentRole {
+  owner
+  contributor
+  reviewer
+}
+
+model Competition {
+  id              String            @id @default(cuid())
+  organizationId  String
+  projectId       String?
+  titleAr         String
+  code            String?
+  dueAt           DateTime?
+  status          CompetitionStatus @default(draft)
+  sourceSignalId  String?
+  sectorCodes     String[] @default([])
+  metaJson        Json?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project         Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  sourceSignal    CulturalSignal?   @relation(fields: [sourceSignalId], references: [id], onDelete: SetNull)
+  categoryAssignments    CompetitionCategoryAssignment[]
+  requirements    CompetitionRequirement[]
+
+  @@index([organizationId, projectId, status])
+  @@index([dueAt])
+}
+
+model CompetitionRequirement {
+  id             String                       @id @default(cuid())
+  competitionId  String
+  category       CompetitionRequirementCategory
+  discipline     CompetitionDiscipline
+  textAr         String                       @db.Text
+  cityOrLocation String?
+  quantitiesJson Json?
+  constraintsJson Json?
+  inStudioScope  Boolean                      @default(true)
+  sourceRefJson  Json?
+  priority       String                       @default("normal")
+  status         CompetitionRequirementStatus @default(new)
+  createdAt      DateTime                     @default(now())
+  updatedAt      DateTime                     @updatedAt
+
+  competition    Competition                  @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  assignments    CompetitionAssignment[]
+
+  @@index([competitionId, category])
+  @@index([competitionId, status])
+}
+
+model CompetitionAssignment {
+  id             String                  @id @default(cuid())
+  requirementId  String
+  userId         String
+  role           CompetitionAssignmentRole @default(contributor)
+  isOwner        Boolean                 @default(false)
+  createdAt      DateTime                @default(now())
+
+  requirement    CompetitionRequirement  @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([requirementId, userId])
+  @@index([userId])
+}
+
+model CompetitionCategoryAssignment {
+  id             String                  @id @default(cuid())
+  competitionId  String
+  category       CompetitionRequirementCategory
+  userId         String
+  role           CompetitionAssignmentRole @default(contributor)
+  isOwner        Boolean                 @default(false)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  competition    Competition             @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([competitionId, category, userId])
+  @@index([competitionId, category])
+  @@index([userId])
+}
+
+// --- Wave32: Materialized visitor experience plan (tables for reporting/comparison) ---
+
+enum CompetitionZoneKind {
+  entry
+  stage
+  exhibit
+  activity
+  food
+  kids
+  tournament
+  rest
+  services
+  exit
+}
+
+enum CompetitionQueueMetricType {
+  entry_queue
+  food_queue
+  ticket_queue
+  tournament_queue
+  general_queue
+}
+
+model CompetitionZone {
+  id               String              @id @default(cuid())
+  competitionId    String
+  code             String
+  nameAr           String
+  kind             CompetitionZoneKind
+  areaSqm          Decimal?            @db.Decimal(12, 2)
+  capacityEstimate Int?
+  notesAr          String?
+  metaJson         Json?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  competition      Competition         @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+
+  @@unique([competitionId, code])
+  @@index([competitionId, kind])
+}
+
+model CompetitionScheduleItem {
+  id            String      @id @default(cuid())
+  competitionId String
+  dayIndex      Int
+  startTime     String
+  endTime       String
+  titleAr       String
+  zoneCode      String?
+  notesAr       String?
+  metaJson      Json?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  competition   Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+
+  @@index([competitionId, dayIndex])
+  @@index([competitionId, zoneCode])
+}
+
+model CompetitionJourneyStep {
+  id                String      @id @default(cuid())
+  competitionId     String
+  stepOrder         Int
+  titleAr           String
+  zoneCode          String?
+  experienceGoalAr  String
+  measurementHintAr String
+  metaJson          Json?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  competition   Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+
+  @@index([competitionId, stepOrder])
+}
+
+model CompetitionQueueMetric {
+  id               String                   @id @default(cuid())
+  competitionId    String
+  metricType       CompetitionQueueMetricType
+  zoneCode         String?
+  targetWaitMinutes Int?
+  peakFactor       Decimal?                 @db.Decimal(6, 3)
+  avgDwellMinutes  Int?
+  notesAr          String?
+  metaJson         Json?
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+
+  competition   Competition                 @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+
+  @@index([competitionId, metricType])
+  @@index([competitionId, zoneCode])
+}
+
+model CompetitionCategoryOwnerRecommendation {
+  id                String                        @id @default(cuid())
+  competitionId     String
+  category          CompetitionRequirementCategory
+  recommendedUserId String
+  score             Decimal                       @db.Decimal(6, 3)
+  reasonsJson       Json?
+  createdAt         DateTime                      @default(now())
+  updatedAt         DateTime                      @updatedAt
+
+  competition       Competition                   @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  user              User                          @relation(fields: [recommendedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([competitionId, category])
+  @@index([competitionId])
+}
+
+model OrgUserProfile {
+  id                String   @id @default(cuid())
+  organizationId    String
+  userId            String
+  department        String
+  skills            String[] @default([])
+  weeklyCapacityHours Int?   @default(40)
+  metaJson          Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId, department])
+}
+
+// Wave29: Compliance obligations (inspired by obligation management systems) - persisted and schedulable reminders
+enum ObligationType {
+  compliance
+  crowd_safety
+  sustainability
+  licensing
+  security
+  accessibility
+  insurance
+  documentation
+}
+
+enum ObligationStatus {
+  open
+  in_progress
+  done
+  waived
+  overdue
+}
+
+enum ObligationReminderChannel {
+  in_app
+  email
+}
+
+enum ObligationReminderStatus {
+  pending
+  sent
+  cancelled
+  failed
+}
+
+model Obligation {
+  id                 String            @id @default(cuid())
+  organizationId     String
+  competitionId      String?
+  requirementId      String?
+  obligationKey      String            @unique
+  type               ObligationType    @default(compliance)
+  status             ObligationStatus  @default(open)
+  titleAr            String
+  descriptionAr      String?           @db.Text
+  ownerUserId        String?
+  dueAt              DateTime?
+  workflowExecutionId String?
+  metaJson           Json?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  organization       Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  competition        Competition?      @relation(fields: [competitionId], references: [id], onDelete: SetNull)
+  requirement        CompetitionRequirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  owner              User?             @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
+  reminders          ObligationReminder[]
+
+  @@index([organizationId, status])
+  @@index([competitionId, status])
+  @@index([requirementId])
+  @@index([type])
+}
+
+model ObligationReminder {
+  id            String                   @id @default(cuid())
+  obligationId  String
+  remindAt      DateTime
+  channel       ObligationReminderChannel @default(in_app)
+  status        ObligationReminderStatus  @default(pending)
+  sentAt        DateTime?
+  errorMessage  String?
+  metaJson      Json?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  obligation    Obligation              @relation(fields: [obligationId], references: [id], onDelete: Cascade)
+
+  @@index([obligationId, remindAt])
+  @@index([status, remindAt])
+}
+
+// Wave43: Governance Policy Registry + Operational Events + Escalation Outbox
+
+enum GovernancePolicyScope {
+  global
+  organization
+}
+
+model GovernancePolicyPack {
+  id              String              @id @default(cuid())
+  scope           GovernancePolicyScope @default(organization)
+  organizationId  String?
+  name            String
+  description     String?
+  isArchived      Boolean             @default(false)
+  createdByUserId String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  organization    Organization?       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy       User?               @relation("GovernancePolicyCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  versions        GovernancePolicyVersion[]
+  assignments     GovernancePolicyAssignment[]
+
+  @@index([organizationId, isArchived, createdAt])
+  @@index([scope, createdAt])
+}
+
+model GovernancePolicyVersion {
+  id              String              @id @default(cuid())
+  packId          String
+  version         String
+  policyJson      Json
+  sha256          String
+  changelog       String?
+  createdByUserId String?
+  createdAt       DateTime            @default(now())
+
+  pack            GovernancePolicyPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  createdBy       User?               @relation("GovernancePolicyVersionCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  assignments     GovernancePolicyAssignment[]
+
+  @@unique([packId, version])
+  @@index([packId, createdAt])
+  @@index([sha256])
+}
+
+model GovernancePolicyAssignment {
+  id               String              @id @default(cuid())
+  organizationId   String
+  packId           String
+  versionId        String
+  isActive         Boolean             @default(false)
+  effectiveAt      DateTime            @default(now())
+  deactivatedAt    DateTime?
+  activatedByUserId String?
+  createdAt        DateTime            @default(now())
+
+  organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  pack             GovernancePolicyPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  version          GovernancePolicyVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  activatedBy      User?               @relation("GovernancePolicyActivator", fields: [activatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, isActive, effectiveAt])
+  @@index([packId, versionId])
+}
+
+enum OperationalActorType {
+  user
+  service
+  worker
+  system
+}
+
+enum OperationalEventSeverity {
+  info
+  warning
+  critical
+}
+
+model OperationalEvent {
+  id             String                 @id @default(cuid())
+  organizationId String?
+  actorType      OperationalActorType   @default(user)
+  actorUserId    String?
+  eventType      String
+  source         String?
+  subject        String?
+  correlationId  String?
+  requestId      String?
+  severity       OperationalEventSeverity @default(info)
+  data           Json?
+  cloudEvent     Json?
+  createdAt      DateTime               @default(now())
+
+  organization   Organization?          @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  actor          User?                  @relation("OperationalEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([eventType, createdAt])
+  @@index([subject])
+  @@index([correlationId])
+  @@index([requestId])
+  @@index([severity])
+}
+
+model EscalationState {
+  id             String    @id @default(cuid())
+  organizationId String
+  entityType     String
+  entityId       String
+  lastLevel      Int       @default(0)
+  lastNotifiedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, entityType, entityId])
+  @@index([organizationId, entityType, lastLevel])
+}
+
+enum OutboxStatus {
+  pending
+  sending
+  sent
+  failed
+}
+
+model OutboxMessage {
+  id             String       @id @default(cuid())
+  organizationId String?
+  channel        String
+  payload        Json
+  status         OutboxStatus @default(pending)
+  attempts       Int          @default(0)
+  nextAttemptAt  DateTime?
+  lastError      String?
+  sentAt         DateTime?
+
+  // Wave45: incident grouping + dedup + quiet-hours suppression
+  dedupKey        String?
+  incidentKey     String?
+  groupCount      Int         @default(1)
+  suppressedUntil DateTime?
+  lastEmittedAt   DateTime?
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([status, nextAttemptAt, createdAt])
+  @@index([organizationId, status, createdAt])
+  @@index([dedupKey, createdAt])
+  @@index([incidentKey, createdAt])
+}
+
+enum HeritageAssetType { material immaterial architectural }
+enum HeritageAccessLevel { public researchers internal restricted }
+
+model HeritageAsset {
+  id              String              @id @default(cuid())
+  organizationId  String
+  createdById     String
+  titleAr         String
+  descriptionAr   String?
+  // Wave48: نشر عام + بحث نصي كامل + ربط IIIF Manifest
+  publicSlug      String?
+  publishedAt     DateTime?
+  iiifManifestId  String?
+  fulltextAr      String?             @db.Text
+  assetType       HeritageAssetType
+  region          String?
+  city            String?
+  latitude        Float?
+  longitude       Float?
+  accessLevel     HeritageAccessLevel @default(internal)
+  // JSON policy for fine-grained access (e.g. allowedRoles, requiredApproval, expiry)
+  accessPolicy    Json?
+  status          String              @default("draft") // draft|submitted|approved|published|archived
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  organization    Organization        @relation(fields: [organizationId], references: [id])
+  createdBy       User                @relation("UserCreatedHeritageAssets", fields: [createdById], references: [id])
+  protocols       HeritageAccessProtocol[]
+
+  @@index([organizationId, status, accessLevel])
+  @@index([publicSlug])
+}
+
+// Wave48: قوائم امتثال/تراخيص عامة (قابلة للربط بالمشاريع/البرامج/المواسم)
+model ComplianceChecklist {
+  id              String   @id @default(cuid())
+  organizationId  String
+  subjectType     String
+  subjectId       String
+  titleAr         String
+  status          String   @default("draft") // draft|active|submitted|approved|closed
+  authorityKey    String?  // مثال: moc_abdea, balady, civil_defense
+  externalRefUrl  String?
+  metaJson        Json?
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  items           ComplianceChecklistItem[]
+
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, subjectType, subjectId])
+  @@index([organizationId, status])
+}
+
+model ComplianceChecklistItem {
+  id            String   @id @default(cuid())
+  checklistId   String
+  titleAr       String
+  descriptionAr String?
+  required      Boolean  @default(true)
+  status        String   @default("open") // open|done|blocked|waived
+  severity      String?  // info|warning|critical
+  externalUrl   String?
+  dueAt         DateTime?
+  metaJson      Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  checklist      ComplianceChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  @@index([checklistId, status])
+}
+
+model HeritageAccessProtocol {
+  id             String         @id @default(cuid())
+  heritageAssetId String
+  nameAr         String
+  rulesJson      Json
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  asset          HeritageAsset  @relation(fields: [heritageAssetId], references: [id], onDelete: Cascade)
+  @@index([heritageAssetId])
+}
+// --- Wave58: Reliable internal service dispatch (Service Outbox) + persistent Export Jobs ---
+
+enum ExportJobStatus {
+  queued
+  running
+  completed
+  failed
+}
+
+enum ServiceOutboxKind {
+  exports_render
+}
+
+enum ServiceOutboxStatus {
+  pending
+  processing
+  dispatched
+  failed
+  dead
+}
+
+model ExportJob {
+  id               String          @id @default(cuid())
+  organizationId   String
+  approvalPacketId String
+  requestedByUserId String?
+  status           ExportJobStatus @default(queued)
+
+  // Full request snapshot (so exports are reproducible even if upstream content changes later)
+  request          Json
+  payloadHash      String?
+  idempotencyKey   String?         @unique
+
+  // Result snapshot (attachment ids + warnings)
+  result           Json?
+  warnings         String[]        @default([])
+  error            String?
+
+  correlationId    String?
+  traceparent      String?
+
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  organization     Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requestedBy      User?           @relation(fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  artifacts        ExportArtifact[]
+
+  @@index([organizationId, approvalPacketId])
+  @@index([organizationId, status])
+  @@index([createdAt])
+}
+
+model ExportArtifact {
+  id          String     @id @default(cuid())
+  exportJobId String
+  attachmentId String
+  name        String
+  mimeType    String
+  sha256      String
+  sizeBytes   Int
+  createdAt   DateTime   @default(now())
+
+  job         ExportJob   @relation(fields: [exportJobId], references: [id], onDelete: Cascade)
+  attachment  Attachment  @relation(fields: [attachmentId], references: [id], onDelete: Cascade)
+
+  @@unique([exportJobId, name])
+  @@index([exportJobId])
+}
+
+model ServiceOutboxEvent {
+  id             String            @id @default(cuid())
+  kind           ServiceOutboxKind
+  status         ServiceOutboxStatus @default(pending)
+
+  organizationId String?
+  aggregateType  String
+  aggregateId    String
+
+  // Outgoing payload (for internal service call)
+  payload        Json
+  dedupKey       String?
+
+  attempts       Int               @default(0)
+  nextAttemptAt  DateTime?
+  lockedAt       DateTime?
+  lockedBy       String?
+  lastError      String?
+
+  correlationId  String?
+  traceparent    String?
+
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  dispatchedAt   DateTime?
+
+  organization   Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([status, nextAttemptAt])
+  @@index([kind])
+  @@index([aggregateType, aggregateId])
+  @@index([organizationId])
+}
+
+// Wave83-Wave86: production promotion for decisioning, studio, and async orchestration
+model AiAgent {
+  id             String   @id @default(cuid())
+  organizationId String?
+  name           String
+  domain         String?    @default("core")
+  descriptionAr  String?
+  status         String     @default("active")
+  toolIds        String[]   @default([])
+  config         Json?
+  purpose        String?
+  riskLevel      String   @default("medium")
+  allowedTools   String[]
+  allowedDomains String[]
+  requiresHumanReview Boolean @default(true)
+  outputSchemaName String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([organizationId])
+}
+
+model AiAgentEvalRun {
+  id          String   @id @default(cuid())
+  agentId     String
+  datasetName String?
+  query       String?    @default("")
+  domain      String?    @default("core")
+  score       Float      @default(0)
+  latencyMs   Int        @default(0)
+  toolsUsed   String[]   @default([])
+  result      Json?
+  samples     Int      @default(0)
+  scores      Json?
+  passed      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  @@index([agentId])
+  @@index([createdAt])
+}
+
+model AsyncJob {
+  id             String   @id @default(cuid())
+  kind           String
+  entityType     String?
+  entityId       String?
+  organizationId String?
+  projectId      String?
+  status         String   @default("queued")
+  queueMode      String   @default("sync")
+  payload        Json?
+  result         Json?
+  error          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([kind, status])
+  @@index([organizationId, projectId])
+}
+
+model NarrativePolicyRuntime {
+  id             String   @id @default(cuid())
+  projectId      String?
+  organizationId String?
+  tone           String?
+  placeIdentity  String?
+  rules          Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([organizationId])
+  @@index([projectId])
+}
+
+model PartnerDirectoryEntry {
+  id             String   @id @default(cuid())
+  organizationId String?
+  name           String
+  kind           String?
+  capabilities   String[]
+  contributionAreas String[]
+  metadata       Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([organizationId])
+}
+
+model BookingConnector {
+  id             String   @id @default(cuid())
+  organizationId String?
+  provider       String
+  baseUrl        String?
+  status         String   @default("active")
+  settings       Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([organizationId])
+}
+
+model VisitorProfileLite {
+  id             String   @id @default(cuid())
+  organizationId String?
+  externalRef    String?
+  profile        Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([organizationId])
+  @@index([externalRef])
+}
+
+model ImpactFramework {
+  id             String   @id @default(cuid())
+  organizationId String?
+  projectId      String?
+  name           String
+  pillars        Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([organizationId])
+  @@index([projectId])
+}
+
+// Wave123: Domain Brain persistence — replaces in-memory arrays across all 6 brains
+enum BrainDomain { heritage destination mega_events culture_programs urban_experience exhibition }
+
+model BrainEvalRun {
+  id                    String      @id @default(cuid())
+  domain                BrainDomain
+  organizationId        String?
+  query                 String
+  retrievalRecallScore  Float       @default(0)
+  groundingScore        Float       @default(0)
+  policyScore           Float       @default(0)
+  // domain-specific scores stored as JSON to avoid schema explosion
+  domainScores          Json?
+  basedOnRetrievalJson  Json?
+  createdAt             DateTime    @default(now())
+
+  @@index([domain, organizationId])
+  @@index([domain, createdAt])
+}
+
+model BrainEvidenceLink {
+  id             String      @id @default(cuid())
+  domain         BrainDomain
+  organizationId String?
+  entityId       String
+  documentId     String
+  chunkId        String?
+  linkType       String
+  noteAr         String?
+  metadata       Json?
+  createdAt      DateTime    @default(now())
+
+  @@index([domain, entityId])
+  @@index([domain, organizationId])
+  @@index([documentId])
+}
+
+model BrainVectorStoreState {
+  id               String      @id @default(cuid())
+  domain           BrainDomain @unique
+  provider         String      @default("pgvector")
+  status           String      @default("scaffolded")
+  corpusId         String?
+  fileCount        Int         @default(0)
+  chunkCount       Int         @default(0)
+  lastSyncAt       DateTime?
+  retrievalMode    String      @default("hybrid_foundation")
+  metadataFilters  String[]    @default([])
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@index([domain, status])
+}

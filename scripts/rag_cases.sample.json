@@ -1,0 +1,12 @@
+[
+  {
+    "id": "case_001",
+    "query": "ما هي أهداف منصة أَثِيل؟",
+    "expectedChunkIds": []
+  },
+  {
+    "id": "case_002",
+    "query": "اذكر أهم الخدمات في الرادار الثقافي",
+    "expectedChunkIds": []
+  }
+]

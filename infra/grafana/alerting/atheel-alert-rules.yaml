@@ -1,0 +1,105 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: atheel-platform
+    folder: ATHEEL
+    interval: 1m
+    rules:
+      - uid: atheel_queue_backlog
+        title: ATHEEL Queue Backlog High
+        condition: B
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            model:
+              expr: sum(bullmq_waiting_jobs{app="atheel"})
+              intervalMs: 60000
+              maxDataPoints: 43200
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              expression: A > 50
+              type: math
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: Backlog مرتفع في طوابير Atheel
+        labels:
+          severity: warning
+      - uid: atheel_api_latency_p95
+        title: ATHEEL API P95 High
+        condition: B
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            model:
+              expr: histogram_quantile(0.95, sum(rate(http_server_duration_seconds_bucket{app="atheel-api"}[5m])) by (le))
+              intervalMs: 60000
+              maxDataPoints: 43200
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              expression: A > 1.5
+              type: math
+        noDataState: NoData
+        execErrState: Error
+        for: 10m
+        annotations:
+          summary: زمن استجابة API مرتفع
+        labels:
+          severity: critical
+      - uid: atheel_worker_failures
+        title: ATHEEL Worker Failures Spike
+        condition: B
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            model:
+              expr: increase(bullmq_failed_jobs_total{app="atheel"}[10m])
+              intervalMs: 60000
+              maxDataPoints: 43200
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              expression: A > 5
+              type: math
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: ارتفاع ملحوظ في فشل مهام العامل
+        labels:
+          severity: critical
+
+
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: atheel-wave89-readiness
+    folder: atheel
+    interval: 1m
+    rules:
+      - uid: readiness_score_low
+        title: Atheel readiness score low
+        condition: C
+        data: []
+        noDataState: NoData
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: Readiness score degraded
+        labels:
+          severity: warning
+      - uid: queue_failed_jobs_spike
+        title: Atheel failed jobs spike
+        condition: C
+        data: []
+        noDataState: NoData
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: Failed jobs spike detected
+        labels:
+          severity: critical

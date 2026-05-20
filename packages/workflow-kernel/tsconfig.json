@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.package-base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../.artifacts/package-types/workflow-kernel.tsbuildinfo"
+  },
+  "include": [
+    "src/**/*.ts",
+    "../@types/**/*.d.ts"
+  ]
+}

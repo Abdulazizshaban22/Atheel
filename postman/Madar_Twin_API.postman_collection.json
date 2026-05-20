@@ -1,0 +1,121 @@
+{
+  "info": {
+    "name": "Madar Twin API (Wave09)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "List Twins",
+      "request": {
+        "method": "GET",
+        "url": "{{API_BASE}}/api/twin"
+      }
+    },
+    {
+      "name": "Create Twin",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nameAr\": \"Twin تجربة\",\n  \"kind\": \"venue\",\n  \"status\": \"draft\",\n  \"coordinateSystem\": \"local_xy\"\n}"
+        },
+        "url": "{{API_BASE}}/api/twin"
+      }
+    },
+    {
+      "name": "Get Graph",
+      "request": {
+        "method": "GET",
+        "url": "{{API_BASE}}/api/twin/twin_demo_1/graph"
+      }
+    },
+    {
+      "name": "Add Node",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nameAr\": \"محطة جديدة\",\n  \"kind\": \"exhibit\",\n  \"capacity\": 45,\n  \"dwellTimeSecondsAvg\": 180\n}"
+        },
+        "url": "{{API_BASE}}/api/twin/twin_demo_1/nodes"
+      }
+    },
+    {
+      "name": "Add Edge",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fromNodeId\": \"tn_entry\",\n  \"toNodeId\": \"tn_story\",\n  \"kind\": \"path\",\n  \"distanceMeters\": 20,\n  \"travelTimeSeconds\": 25\n}"
+        },
+        "url": "{{API_BASE}}/api/twin/twin_demo_1/edges"
+      }
+    },
+    {
+      "name": "Create Simulation",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"durationMinutes\": 60,\n  \"stepSeconds\": 5,\n  \"arrivalsPerMinute\": 22,\n  \"startNodeId\": \"tn_entry\"\n}"
+        },
+        "url": "{{API_BASE}}/api/twin/twin_demo_1/simulations"
+      }
+    },
+    {
+      "name": "Run Simulation (replace runId)",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{}"},
+        "url": "{{API_BASE}}/api/twin/simulations/{{RUN_ID}}/run"
+      }
+    },
+    {
+      "name": "Enqueue Simulation (replace runId)",
+      "request": {
+        "method": "POST",
+        "url": "{{API_BASE}}/api/twin/simulations/{{RUN_ID}}/enqueue"
+      }
+    },
+    {
+      "name": "Twin Dashboard",
+      "request": {
+        "method": "GET",
+        "url": "{{API_BASE}}/api/dashboards/twin"
+      }
+    },
+    {
+      "name": "Ingest Telemetry",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"kind\": \"occupancy\",\n  \"nodeId\": \"tn_story\",\n  \"value\": 58\n}"
+        },
+        "url": "{{API_BASE}}/api/twin/twin_demo_1/telemetry"
+      }
+    },
+    {
+      "name": "Twin Agent Optimize",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"objective\": \"اقترح تحسينات لمسار الحي لتقليل الزحام في محطة السردية\"\n}"
+        },
+        "url": "{{API_BASE}}/api/twin/twin_demo_1/agents/optimize"
+      }
+    }
+  ],
+  "variable": [
+    {"key": "API_BASE", "value": "http://localhost:4000"},
+    {"key": "RUN_ID", "value": "tsim_xxxxxxxx"}
+  ]
+}

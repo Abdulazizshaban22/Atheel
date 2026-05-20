@@ -1,0 +1,18 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/ai-kernel" },
+    { "path": "./packages/creative-loop-kernel" },
+    { "path": "./packages/culture-sa-kernel" },
+    { "path": "./packages/doc-kernel" },
+    { "path": "./packages/engines-kernel" },
+    { "path": "./packages/innovation-kernel" },
+    { "path": "./packages/object-store" },
+    { "path": "./packages/packet-kernel" },
+    { "path": "./packages/runtime-kernel" },
+    { "path": "./packages/shared" },
+    { "path": "./packages/twin-kernel" },
+    { "path": "./packages/twinspec-kernel" },
+    { "path": "./packages/workflow-kernel" }
+  ]
+}

@@ -1,0 +1,110 @@
+{
+  "version": 2,
+  "projects": {
+    "packages-core": {
+      "root": "packages",
+      "projectType": "library",
+      "targets": {
+        "build": {
+          "executor": "nx:run-commands",
+          "options": {
+            "command": "node -e \"console.log('packages-core: no build step (typecheck is handled by apps)')\""
+          }
+        },
+        "test": {
+          "executor": "nx:run-commands",
+          "options": {
+            "command": "node -e \"console.log('packages-core: no tests')\""
+          }
+        },
+        "typecheck": {
+          "executor": "nx:run-commands",
+          "options": {
+            "command": "node -e \"console.log('packages-core: no standalone typecheck')\""
+          }
+        }
+      }
+    },
+    "web": {
+      "root": "apps/web",
+      "projectType": "application",
+      "implicitDependencies": [
+        "packages-core"
+      ],
+      "targets": {
+        "build": {
+          "executor": "nx:run-commands",
+          "options": {
+            "command": "pnpm --filter @madar/web build"
+          }
+        },
+        "typecheck": {
+          "executor": "nx:run-commands",
+          "options": {
+            "command": "pnpm --filter @madar/web typecheck"
+          }
+        },
+        "test": {
+          "executor": "nx:run-commands",
+          "options": {
+            "command": "node -e \"console.log('web: no unit tests configured')\""
+          }
+        }
+      }
+    },
+    "api": {
+      "root": "apps/api",
+      "projectType": "application",
+      "implicitDependencies": [
+        "packages-core"
+      ],
+      "targets": {
+        "build": {
+          "executor": "nx:run-commands",
+          "options": {
+            "command": "pnpm --filter @madar/api build"
+          }
+        },
+        "typecheck": {
+          "executor": "nx:run-commands",
+          "options": {
+            "command": "pnpm --filter @madar/api typecheck"
+          }
+        },
+        "test": {
+          "executor": "nx:run-commands",
+          "options": {
+            "command": "pnpm --filter @madar/api test"
+          }
+        }
+      }
+    },
+    "worker": {
+      "root": "apps/worker",
+      "projectType": "application",
+      "implicitDependencies": [
+        "packages-core"
+      ],
+      "targets": {
+        "build": {
+          "executor": "nx:run-commands",
+          "options": {
+            "command": "pnpm --filter @madar/worker build"
+          }
+        },
+        "typecheck": {
+          "executor": "nx:run-commands",
+          "options": {
+            "command": "pnpm --filter @madar/worker typecheck"
+          }
+        },
+        "test": {
+          "executor": "nx:run-commands",
+          "options": {
+            "command": "node -e \"console.log('worker: no tests configured')\""
+          }
+        }
+      }
+    }
+  }
+}

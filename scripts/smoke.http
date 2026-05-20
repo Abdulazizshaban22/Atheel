@@ -1,0 +1,31 @@
+### Health
+GET http://localhost:4000/api/health
+
+### Organizations
+GET http://localhost:4000/api/organizations
+
+### Create Organization
+POST http://localhost:4000/api/organizations
+Content-Type: application/json
+
+{
+  "nameAr": "متحف تجريبي",
+  "sector": "museum",
+  "city": "جدة"
+}
+
+### Projects
+GET http://localhost:4000/api/projects
+
+### Analytics Dashboard
+GET http://localhost:4000/api/analytics/dashboard
+
+### AI Assist
+POST http://localhost:4000/api/ai/content-assist
+Content-Type: application/json
+
+{
+  "prompt": "أعد صياغة هذه الفقرة بلغة ثقافية واضحة للزوار",
+  "mode": "tone_polish",
+  "targetLanguage": "ar"
+}

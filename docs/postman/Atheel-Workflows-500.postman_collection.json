@@ -1,0 +1,86 @@
+{
+  "info": {
+    "name": "Atheel Workflows 500 API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Catalog Summary",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/workflows/catalog/summary"
+      }
+    },
+    {
+      "name": "Catalog List",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/workflows/catalog?limit=20&domain=heritage"
+      }
+    },
+    {
+      "name": "Get Template",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/workflows/catalog/wft_0001"
+      }
+    },
+    {
+      "name": "Simulate Run",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"templateId\": \"wft_0001\", \"hasKnowledge\": true, \"hasApprovalActor\": true, \"priority\": \"normal\", \"persistRun\": false}"
+        },
+        "url": "{{baseUrl}}/api/workflows/runs/simulate"
+      }
+    },
+    {
+      "name": "Instantiate Workflow",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"templateId\": \"wft_0001\", \"organizationId\": \"org_demo\", \"projectId\": \"proj_demo\", \"autoActivate\": true}"
+        },
+        "url": "{{baseUrl}}/api/workflows/instances"
+      }
+    },
+    {
+      "name": "Export Pack",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"ids\": [\"wft_0001\", \"wft_0002\", \"wft_0003\"], \"name\": \"starter-pack\"}"
+        },
+        "url": "{{baseUrl}}/api/workflows/packs/export"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    }
+  ]
+}

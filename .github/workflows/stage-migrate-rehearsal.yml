@@ -1,0 +1,25 @@
+name: stage-migrate-rehearsal
+
+on:
+  workflow_dispatch:
+
+jobs:
+  migrate-stage:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.STAGE_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Enable corepack
+        run: corepack enable
+      - name: Activate pnpm
+        run: corepack prepare pnpm@9.15.0 --activate
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Prisma migrate deploy
+        run: pnpm --filter @madar/db prisma:migrate:deploy
+      - name: Prisma migrate status
+        run: pnpm --filter @madar/db exec prisma migrate status

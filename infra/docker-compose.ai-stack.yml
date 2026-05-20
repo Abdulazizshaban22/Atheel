@@ -1,0 +1,125 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: atheel-postgres
+    environment:
+      POSTGRES_USER: atheel
+      POSTGRES_PASSWORD: atheel
+      POSTGRES_DB: atheel
+    ports:
+      - "5432:5432"
+    volumes:
+      - atheel_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atheel -d atheel"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+
+  redis:
+    image: redis:7
+    container_name: atheel-redis
+    ports:
+      - "6379:6379"
+
+  vllm:
+    # Example CPU-friendly placeholder; replace image/command with your target GPU image and model.
+    image: vllm/vllm-openai:latest
+    container_name: atheel-vllm
+    command: >
+      --model ${VLLM_MODEL_NAME:-Qwen/Qwen2.5-7B-Instruct}
+      --host 0.0.0.0
+      --port 8000
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
+    ports:
+      - "8000:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: ["gpu"]
+    profiles: ["gpu"]
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: atheel-api
+    environment:
+      NODE_ENV: production
+      API_PORT: 4000
+      DATABASE_URL: ${DATABASE_URL:-postgresql://atheel:atheel@postgres:5432/atheel?schema=public}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      VLLM_BASE_URL: ${VLLM_BASE_URL:-http://vllm:8000}
+      VLLM_MODEL_NAME: ${VLLM_MODEL_NAME:-Qwen/Qwen2.5-7B-Instruct}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:3000}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?AUTH_JWT_SECRET is required}
+      WORKER_TOKEN: ${WORKER_TOKEN:?WORKER_TOKEN is required}
+      EXPORT_QUEUE: ${EXPORT_QUEUE:-atheel-exports}
+      PUBLISH_QUEUE: ${PUBLISH_QUEUE:-atheel-workflow-publish}
+      REPORT_QUEUE: ${REPORT_QUEUE:-atheel-workflow-report}
+      OUTBOX_QUEUE: ${OUTBOX_QUEUE:-atheel-outbox}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      EMAIL_WEBHOOK_URL: ${EMAIL_WEBHOOK_URL:-}
+      WHATSAPP_WEBHOOK_URL: ${WHATSAPP_WEBHOOK_URL:-}
+      ARTIFACTS_DIR: ${ARTIFACTS_DIR:-runtime_artifacts}
+      CHROME_EXECUTABLE_PATH: ${CHROME_EXECUTABLE_PATH:-/usr/bin/chromium-browser}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "4000:4000"
+    volumes:
+      - atheel_artifacts:/app/runtime_artifacts
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    container_name: atheel-worker
+    environment:
+      NODE_ENV: production
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      API_BASE_URL: ${API_INTERNAL_BASE_URL:-http://api:4000}
+      API_PREFIX: /api
+      QUEUE_NAME: ${QUEUE_NAME:-atheel-workflow-executions}
+      ESCALATION_QUEUE: ${ESCALATION_QUEUE:-atheel-workflow-escalations}
+      EXPORT_QUEUE: ${EXPORT_QUEUE:-atheel-exports}
+      PUBLISH_QUEUE: ${PUBLISH_QUEUE:-atheel-workflow-publish}
+      REPORT_QUEUE: ${REPORT_QUEUE:-atheel-workflow-report}
+      OUTBOX_QUEUE: ${OUTBOX_QUEUE:-atheel-outbox}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      EMAIL_WEBHOOK_URL: ${EMAIL_WEBHOOK_URL:-}
+      WHATSAPP_WEBHOOK_URL: ${WHATSAPP_WEBHOOK_URL:-}
+      ARTIFACTS_DIR: ${ARTIFACTS_DIR:-runtime_artifacts}
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-4}
+      PUBLISH_CONCURRENCY: ${PUBLISH_CONCURRENCY:-1}
+      REPORT_CONCURRENCY: ${REPORT_CONCURRENCY:-1}
+      WORKER_TOKEN: ${WORKER_TOKEN:?WORKER_TOKEN is required}
+    depends_on:
+      - api
+      - redis
+    volumes:
+      - atheel_artifacts:/app/runtime_artifacts
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: atheel-web
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://api:4000}
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+
+volumes:
+  atheel_pgdata:
+  atheel_artifacts:

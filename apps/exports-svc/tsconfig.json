@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2022",
+    "declaration": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "skipLibCheck": true,
+    "paths": {
+      "@madar/*": [
+        "../../packages/*/src",
+        "../../packages/*"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "../@types/app-audit-globals.d.ts"
+  ]
+}
