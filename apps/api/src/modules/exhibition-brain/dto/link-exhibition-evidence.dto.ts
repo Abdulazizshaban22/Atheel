@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsArray, IsObject, IsNumber, MaxLength } from 'class-validator';
+import { IsOptional, IsString, IsObject } from 'class-validator';
 export class LinkExhibitionEvidenceDto {
   exhibitId!: string;
   documentId!: string;

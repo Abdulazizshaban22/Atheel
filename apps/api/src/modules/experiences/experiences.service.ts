@@ -8,7 +8,7 @@ import { simulateTwinFlow, type TwinEdgeKind, type TwinGraph, type TwinNodeKind 
 import { ExperiencesRepository } from './experiences.repository';
 import { PrismaService } from '@madar/db';
 import { throwIfProdDbError } from '../../common/db-fallback';
-import type { ExperienceRecord, ExperienceSimulationInput, TwinExperienceServiceFacade } from './experience-core.types';
+import type { ExperienceSimulationInput, TwinExperienceServiceFacade } from './experience-core.types';
 
 type TwinNodeLike = {
   id: string;

@@ -41,16 +41,18 @@
 - Wave61: MinIO/S3 Object Store Driver: docs/release/WAVE61_MINIO_S3_OBJECT_STORE_AR.md
 
 ## 5) وثائق المنتج والبيع
-- PRD: 01_PRD_MVP_AR.md
+- PRD التفصيلي V1: 21_PRD_DETAILED_V1_ATHEEL_AR.md
 - Wireframes: 02_WIREFRAMES_AR.md
 - كتالوج الخدمات: 03_SERVICE_CATALOG_SALES_AR.md
 - الباقات والتسعير: 04_PRICING_PACKAGES_AR.md
+- منافسة مرجحة: 22_COMPETITOR_MATRIX_WEIGHTED_ATHEEL_AR.csv
+- منهجية تسجيل المنافسين: 23_COMPETITOR_SCORING_METHODOLOGY_ATHEEL_AR.md
 
 ## 6) وثائق الذكاء الاصطناعي والمعرفة
 - تشغيل نماذج LLM و RAG والوكلاء: 29_AI_RUNTIME_LLM_RAG_AGENT_VLLM_ENABLEMENT_AR.md
 
-## 7) مخططات التنفيذ
-- خطة 90 يوم: 10_IMPLEMENTATION_PLAN_90D_AR.md
+## 7) جرد الـ Endpoints
+- المرجع الموحّد: docs/closure/ENDPOINT_INVENTORY.md
 
 ملاحظة تنظيمية: أي وثيقة جديدة يجب أن تُضاف إلى هذا الفهرس مع وصف سطر واحد، وأن يكون لها اسم واضح غير معتمد على أرقام فقط.
 

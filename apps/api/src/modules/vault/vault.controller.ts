@@ -1,7 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { Public } from '../auth/decorators/public.decorator';
 import { VaultService } from './vault.service';
 
 @ApiBearerAuth()

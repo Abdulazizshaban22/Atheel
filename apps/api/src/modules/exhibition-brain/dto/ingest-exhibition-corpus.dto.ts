@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsArray, IsObject, IsNumber, MaxLength } from 'class-validator';
+import { IsOptional, IsString, IsArray, IsObject, MaxLength } from 'class-validator';
 export class IngestExhibitionCorpusDto {
   @IsOptional()
   @IsString()

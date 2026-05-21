@@ -1,6 +1,5 @@
 import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
-import { Roles } from '../auth/decorators/roles.decorator';
 import { ApiTags } from '@nestjs/swagger';
 import { Public } from '../auth/decorators/public.decorator';
 import { assertWorkerToken } from '../../common/security/worker-token';

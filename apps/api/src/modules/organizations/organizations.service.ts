@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '@madar/db';
 import { randomUUID } from 'node:crypto';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { throwIfProdDbError } from '../../common/db-fallback';

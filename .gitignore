@@ -1,2 +1,46 @@
-.artifacts/
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+.turbo/
+out/
 *.tsbuildinfo
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Runtime artifacts
+.artifacts/
+runtime_uploads/
+runtime_artifacts/
+
+# Environment files (never commit secrets)
+.env
+.env.local
+.env.*.local
+secrets/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+Thumbs.db
+
+# Nx cache
+.nx/cache
+.nx/workspace-data

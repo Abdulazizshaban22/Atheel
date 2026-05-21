@@ -1,5 +1,4 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
-import { Public } from '../auth/decorators/public.decorator';
 import { CultureGraphService } from './culture-graph.service';
 
 @Controller('culture-graph')

@@ -2,7 +2,6 @@ import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common
 import { WorkspacesService } from './workspaces.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
-import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('workspaces')
 export class WorkspacesController {

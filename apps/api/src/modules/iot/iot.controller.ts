@@ -1,6 +1,5 @@
 import { Body, Controller, Get, Headers, Param, Post, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { Public } from '../auth/decorators/public.decorator';
 import { IotService } from './iot.service';
 import { CreateDeviceDto } from './dto/create-device.dto';
 import { IngestTelemetryDto } from './dto/ingest-telemetry.dto';

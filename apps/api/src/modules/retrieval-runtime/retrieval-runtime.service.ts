@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '@madar/db';
-import { vectorSearch, hashEmbed, cosineSimilarity, type VectorSearchResult } from '@madar/ai-kernel';
-import { tokenize as kernelTokenize, normalizeText } from '@madar/ai-kernel';
+import { hashEmbed, cosineSimilarity } from '@madar/ai-kernel';
+import { tokenize as kernelTokenize } from '@madar/ai-kernel';
 
 type VectorSyncStatus = {
   domain: string;

@@ -1,4 +1,3 @@
-import { IsOptional, IsString, IsArray, IsObject, IsNumber, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ScheduleReminderDto {

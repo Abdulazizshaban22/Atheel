@@ -89,7 +89,6 @@ type ObligationReminderJob = {
   remindAtIso?: string;
 };
 
-
 const QUEUE_NAME = process.env.QUEUE_NAME || 'atheel-workflow-executions';
 const ESCALATION_QUEUE = process.env.ESCALATION_QUEUE || 'atheel-workflow-escalations';
 const TWIN_SIM_QUEUE = process.env.TWIN_SIM_QUEUE || 'atheel-twin-simulations';
@@ -120,7 +119,6 @@ function loadSecret(name: string) {
 }
 
 const WORKER_TOKEN = loadSecret('WORKER_TOKEN') || '';
-
 
 function assertWorkerRuntimeReadiness() {
   const isProd = (process.env.NODE_ENV || '').toString().toLowerCase() === 'production';
@@ -187,7 +185,6 @@ async function postJsonWorker<T>(url: string, body: any): Promise<T> {
   return JSON.parse(text || '{}') as T;
 }
 
-
 async function ensureDir(abs: string) {
   await fs.mkdir(abs, { recursive: true });
 }
@@ -223,7 +220,6 @@ async function getJson<T>(url: string): Promise<T> {
   }
   return JSON.parse(text || '{}') as T;
 }
-
 
 async function processAiDecisionJob(job: { jobId: string }) {
   return await postJsonWorker(apiUrl(`/ai/jobs/${job.jobId}/process`), {});
@@ -435,7 +431,6 @@ async function etimadVisitorConnector(maxItems = 12): Promise<RadarFinding[]> {
     } catch {
       addendaCount = null;
     }
-
 
     const title = (name || purpose || '').trim();
     if (!title) continue;
@@ -807,8 +802,7 @@ async function ungmPublicConnector(maxItems = 10): Promise<RadarFinding[]> {
     const h = await fetchText(url).catch(() => '');
     if (!h) continue;
     const txt = stripHtmlToText(h);
-    
-    
+
     // Try the first meaningful line (often the H1 title)
     const firstLine = txt.split('\n').map((l) => l.trim()).filter(Boolean)[0] || '';
     const titleGuess = firstLine || txt.replace(/\n/g, ' ').split(' ').slice(0, 18).join(' ').trim();
@@ -880,8 +874,6 @@ async function processExecution(job: ExecutionJob) {
   }
   return last;
 }
-
-
 
 async function processTwinSimulation(job: TwinSimJob) {
   const url = apiUrl(`/twin/simulations/${job.runId}/run`);
@@ -1099,7 +1091,6 @@ async function processReport(job: ReportJob, meta: { attempt: number; jobId?: st
     job: { queue: REPORT_QUEUE, jobId: meta.jobId },
   });
 }
-
 
 async function bootstrap() {
   const effectiveRedisUrl = REDIS_URL || 'redis://localhost:6379';

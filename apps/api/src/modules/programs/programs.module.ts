@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { PrismaModule } from '@madar/db';
 import { ProgramsService } from './programs.service';
 import { ProgramsController } from './programs.controller';
 

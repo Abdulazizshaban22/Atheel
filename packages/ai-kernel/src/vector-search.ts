@@ -5,7 +5,7 @@
  */
 
 import { tokenize, normalizeText } from './text';
-import type { KnowledgeChunk, RetrievalResult } from './types';
+import type { KnowledgeChunk } from './types';
 
 // ── Types ──
 

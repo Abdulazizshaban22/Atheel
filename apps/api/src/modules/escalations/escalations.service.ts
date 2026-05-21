@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@madar/db';
 import { GovernanceService } from '../governance/governance.service';
 import { NotificationsService } from '../notifications/notifications.service';

@@ -4,8 +4,6 @@
  * Usage: import { StatusBadge, MetricCard, DataTable, ... } from '@/components/design-system';
  */
 
-'use client';
-
 import { type ReactNode } from 'react';
 
 // ═══ Color Tokens ═══

@@ -1,6 +1,5 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
-import { Roles } from '../auth/decorators/roles.decorator';
 import { GenerateNarrativeDto } from './dto/generate-narrative.dto';
 import { GenerateNarrativeABDto } from './dto/generate-narrative-ab.dto';
 import { NarrativesService } from './narratives.service';

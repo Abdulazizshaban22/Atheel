@@ -1,4 +1,3 @@
-
 export function scoreUrbanExperienceCorpusQuality(input: { documents: number; chunks: number; evidenceLinks: number; experienceRecords: number; }) {
   const base = 35;
   const documents = Math.min(input.documents * 6, 25);

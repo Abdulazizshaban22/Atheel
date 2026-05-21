@@ -1,5 +1,4 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
-import { Public } from '../auth/decorators/public.decorator';
 import { CreateTwinSpecDto } from './dto/create-twinspec.dto';
 import { PublishTwinSpecDto } from './dto/publish-twinspec.dto';
 import { TwinSpecService } from './twinspec.service';

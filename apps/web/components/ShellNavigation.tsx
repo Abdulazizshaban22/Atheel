@@ -1,5 +1,3 @@
-'use client';
-
 import { NavigationSection, isItemActive } from '../lib/navigation';
 
 type ShellNavigationProps = {

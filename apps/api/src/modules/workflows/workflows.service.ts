@@ -28,10 +28,6 @@ import { throwIfProdDbError } from '../../common/db-fallback';
 
 import { retrieveTopChunks, buildRagPrompt, buildCultureAgentPlan } from '@madar/ai-kernel';
 import { SAUDI_REGIONS, CULTURE_THEMES } from '@madar/culture-sa-kernel';
-import { simulateTwinFlow } from '@madar/twin-kernel';
-import { buildApprovalPacketSections } from '@madar/packet-kernel';
-import { buildPptxFromMarkdown } from '@madar/doc-kernel';
-import { impactScore, riskScore } from '@madar/innovation-kernel';
 
 
 type CatalogFilterInput = {

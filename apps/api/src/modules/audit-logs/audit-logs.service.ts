@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '@madar/db';
 import { getRequestContext } from '../../common/request-context';
 import { CreateAuditLogDto } from './dto/create-audit-log.dto';
 import { QueryAuditLogsDto } from './dto/query-audit-logs.dto';

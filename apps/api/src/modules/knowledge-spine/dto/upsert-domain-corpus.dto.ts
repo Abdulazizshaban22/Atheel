@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsArray, IsObject, IsNumber, MaxLength } from 'class-validator';
+import { IsOptional, IsArray } from 'class-validator';
 export class UpsertDomainCorpusDto {
   domain!: string;
   titleAr!: string;

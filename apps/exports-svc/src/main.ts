@@ -13,6 +13,8 @@ function normalizeChannel(v: string | undefined) {
   return 'http';
 }
 
+const logger = new Logger('Bootstrap');
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { logger: ['log', 'error', 'warn'] });
 
@@ -46,7 +48,10 @@ async function bootstrap() {
   await app.startAllMicroservices();
   const port = Number(process.env.EXPORTS_RENDERER_PORT || 3101);
   await app.listen(port);
-  Logger.log(`exports-svc listening on :${port}`, 'Bootstrap');
+  logger.log(`exports-svc listening on :${port}`);
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  logger.error('exports-svc bootstrap failed', err instanceof Error ? err.stack : String(err));
+  process.exit(1);
+});

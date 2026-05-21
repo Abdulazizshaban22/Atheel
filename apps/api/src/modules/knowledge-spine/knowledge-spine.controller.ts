@@ -1,6 +1,5 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
-import { Roles } from '../auth/decorators/roles.decorator';
 import { KnowledgeSpineService } from './knowledge-spine.service';
 import { UpsertDomainCorpusDto } from './dto/upsert-domain-corpus.dto';
 import { SearchDomainKnowledgeDto } from './dto/search-domain-knowledge.dto';

@@ -1,5 +1,4 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { PrismaService } from '@madar/db';
 import { throwIfProdDbError } from '../../common/db-fallback';
 import { QueryExperiencesDto } from './dto/query-experiences.dto';

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@madar/db';
-import { buildCultureAgentPlan, buildRagPrompt, chunkText, estimateTokens, retrieveTopChunks, scoreChunk, type AiProviderConfig, type ChatMessage } from '@madar/ai-kernel';
+import { buildCultureAgentPlan, buildRagPrompt, chunkText, estimateTokens, retrieveTopChunks, type AiProviderConfig, type ChatMessage } from '@madar/ai-kernel';
 import { randomUUID } from 'crypto';
 import { GenerateContentAssistDto } from './dto/generate-content-assist.dto';
 import { CreativePackDto } from './dto/creative-pack.dto';

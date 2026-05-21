@@ -1,6 +1,5 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
-import { Roles } from '../auth/decorators/roles.decorator';
 import { ApiTags } from '@nestjs/swagger';
 import { AiTrustService } from './ai-trust.service';
 import { EvaluateAiTrustDto } from './dto/evaluate-ai-trust.dto';

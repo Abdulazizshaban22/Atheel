@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { AttachmentsModule } from '../attachments/attachments.module';
 import { IiifController } from './iiif.controller';
 import { IiifService } from './iiif.service';
 

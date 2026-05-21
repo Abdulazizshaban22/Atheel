@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@madar/db';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { assertOrgAccess } from '../../common/access';

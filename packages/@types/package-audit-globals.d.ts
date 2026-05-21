@@ -1,8 +1,3 @@
-declare type BufferLike = Uint8Array & {
-  toString(encoding?: string): string;
-  length: number;
-};
-
 declare class Buffer extends Uint8Array {
   static from(input: string | Uint8Array | ArrayBufferLike, encoding?: string): Buffer;
   static isBuffer(value: unknown): value is Buffer;

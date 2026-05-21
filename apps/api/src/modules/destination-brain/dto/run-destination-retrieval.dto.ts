@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsArray, IsObject, IsNumber, MaxLength } from 'class-validator';
+import { IsOptional, IsString, IsNumber, MaxLength } from 'class-validator';
 export class RunDestinationRetrievalDto {
   @IsString()
   @MaxLength(5000)
