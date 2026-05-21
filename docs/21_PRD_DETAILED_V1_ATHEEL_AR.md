@@ -188,3 +188,15 @@
 5. اختبار صلاحيات (منع/سماح)
 6. مراجعة Swagger
 7. توثيق مخرجات التشغيل في تقرير Pilot
+
+## 14) امتدادات النطاق بعد V1 (تاريخ تنفيذي)
+- **Wave29** — موصلات رسمية إضافية + التزامات الامتثال (balady / rcrc_opendata / etimad_api).
+- **Wave33** — Vector RAG (lexical / vector / hybrid) + Embeddings عبر vLLM + IoT Telemetry + Twin Import.
+- **Wave34** — TwinSpec كطبقة مواصفة موحّدة (`POST /api/twinspec`, `POST /api/twinspec/:id/publish`).
+- **Wave56–61** — Capability Packs، Exports Renderer Microservice، Service Outbox، ClientProxy Channel، Object Store + MinIO/S3.
+- **Wave91–99** — Runtime foundation، Policy/Audit boundary، Application services normalization، Mutation/Response contract، Outbox، Worker-backed twin sync.
+- **Wave100–102** — Queue observability + trace propagation + dead-letter replay.
+- **Wave103–115** — Type-risk audit، hotspot reduction، monorepo package closure، app shell closure، repo diet.
+- **Wave121–122** — Architecture blueprint موسّع + Master technical blueprint + Delivery waves + Shell refactor.
+
+أي قصة استخدام جديدة بعد V1 يجب أن تضاف عبر وثيقة منفصلة (مثل `docs/architecture/WAVE122_PRODUCT_SCOPE_AR.md`) بدل تعديل هذا الـ PRD.
