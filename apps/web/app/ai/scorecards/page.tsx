@@ -11,7 +11,6 @@ type Scorecard = { ok?: boolean; agent?: Agent; scorecard?: { passRate?: number;
 type JobsResponse = { items?: Array<{ id: string; status: string; payload?: { agentId?: string } }> } | null;
 
 export default function AiScorecardsPage() {
-  const [jobs, setJobs] = useState<JobsResponse>(null);
   const [scorecards, setScorecards] = useState<Scorecard[]>([]);
 
   useEffect(() => {
@@ -19,7 +18,6 @@ export default function AiScorecardsPage() {
     (async () => {
       const res = await apiGet<JobsResponse>('/ai/jobs');
       if (!mounted) return;
-      setJobs(res);
       const ids = Array.from(new Set((res?.items || []).map((x) => x.payload?.agentId).filter(Boolean))) as string[];
       const cards = await Promise.all(ids.slice(0, 8).map((id) => apiGet<Scorecard>(`/ai/agents/${id}/scorecard`)));
       if (!mounted) return;

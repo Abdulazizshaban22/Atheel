@@ -830,6 +830,16 @@ export async function tickExecutionWithHandlers(execution: RuntimeExecution, opt
 
   return { execution, events };
 }
+
+/**
+ * Execution status state machine:
+ *   queued        -> running | paused
+ *   running       -> waiting_input | completed | failed | paused
+ *   waiting_input -> queued (via applyExecutionAction) | running | failed
+ *   paused        -> queued (via resume)
+ *   completed     -> (terminal)
+ *   failed        -> (terminal)
+ */
 function isExecutionTerminalOrCompleted(status: RuntimeExecution['status']) {
   return status === 'completed' || status === 'failed' || status === 'paused';
 }
@@ -841,5 +851,4 @@ function isExecutionActive(status: RuntimeExecution['status']) {
 function isDeferredOutput(value: unknown): value is RuntimeDeferredStepOutput {
   return Boolean(value && typeof value === 'object' && '__defer' in (value as Record<string, unknown>));
 }
-
 

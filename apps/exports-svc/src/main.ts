@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { Transport, type MicroserviceOptions } from '@nestjs/microservices';
 import { AppModule } from './app.module';
@@ -45,8 +46,7 @@ async function bootstrap() {
   await app.startAllMicroservices();
   const port = Number(process.env.EXPORTS_RENDERER_PORT || 3101);
   await app.listen(port);
-  // eslint-disable-next-line no-console
-  console.log(`exports-svc listening on :${port}`);
+  Logger.log(`exports-svc listening on :${port}`, 'Bootstrap');
 }
 
 bootstrap();

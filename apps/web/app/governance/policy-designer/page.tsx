@@ -216,7 +216,7 @@ export default function GovernancePolicyDesigner() {
         </div>
         {sec.noteAr ? <div className="notice">{sec.noteAr}</div> : null}
 
-        {arr.map((item, idx) => (
+        {arr.map((_item, idx) => (
           <div className="card stack" key={idx} style={{ borderStyle: 'dashed' }}>
             <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
               <div className="badge">#{idx + 1}</div>

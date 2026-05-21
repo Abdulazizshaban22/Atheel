@@ -1,4 +1,11 @@
-import type { ApprovalPacketBottleneck, ApprovalPacketCitation, ApprovalPacketKpis, ApprovalPacketSections, PacketBuildInput } from './types';
+import type {
+  ApprovalPacketBottleneck,
+  ApprovalPacketCitation,
+  ApprovalPacketKpis,
+  ApprovalPacketSections,
+  PacketBuildInput,
+  PacketSimulationProfile,
+} from './types';
 
 function fmtTime(seconds?: number) {
   if (!seconds && seconds !== 0) return 'غير متاح';
@@ -34,7 +41,7 @@ function buildDecisionRequest(k: ApprovalPacketKpis) {
   ].join('\n');
 }
 
-function buildAssumptions(profile?: import('./types').PacketSimulationProfile) {
+function buildAssumptions(profile?: PacketSimulationProfile) {
   const a: string[] = [];
   if (!profile) {
     return [

@@ -137,7 +137,7 @@ export function simulateTwinFlow(input: {
     return scored[0].to;
   }
 
-  function enqueueToNode(visitor: Visitor, nodeId: string, nowSecond: number) {
+  function enqueueToNode(visitor: Visitor, nodeId: string) {
     const node = nodesById[nodeId];
     if (!node) return;
 
@@ -191,7 +191,7 @@ export function simulateTwinFlow(input: {
         totalTravelSeconds: 0,
         enteredAtSecond: t,
       };
-      enqueueToNode(visitor, startNodeId, t);
+      enqueueToNode(visitor, startNodeId);
     }
 
     // update waits
@@ -242,7 +242,7 @@ export function simulateTwinFlow(input: {
         completed.push(visitor);
         // do not enqueue to exit
       } else {
-        enqueueToNode(visitor, next, t);
+        enqueueToNode(visitor, next);
       }
 
       // Admit from queue at the node we left (space freed)

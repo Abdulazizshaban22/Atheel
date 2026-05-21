@@ -192,7 +192,6 @@ async function main() {
   if (profile === 'demo') {
     await seedDemo(org.id, project.id);
   }
-  console.log(`ATheel seed complete (${profile})`);
 }
 
 main().catch((e) => {

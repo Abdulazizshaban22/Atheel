@@ -187,8 +187,6 @@ async function postJsonWorker<T>(url: string, body: any): Promise<T> {
   return JSON.parse(text || '{}') as T;
 }
 
-// (deduped) removed duplicate getJsonWorker implementation
-
 
 async function ensureDir(abs: string) {
   await fs.mkdir(abs, { recursive: true });
@@ -225,9 +223,6 @@ async function getJson<T>(url: string): Promise<T> {
   }
   return JSON.parse(text || '{}') as T;
 }
-
-// (deduped) removed duplicate getJsonWorker implementation
-
 
 
 async function processAiDecisionJob(job: { jobId: string }) {
@@ -1159,9 +1154,6 @@ async function bootstrap() {
     console.error('[EscalationWorker] failed', { jobId: job?.id, err: err?.message });
   });
 
-  
-
-  
   // Worker for outbox dispatch
   const outboxWorker = new Worker<OutboxJob>(
     OUTBOX_QUEUE,
@@ -1200,7 +1192,7 @@ async function bootstrap() {
     console.error('[ServiceOutboxWorker] failed', { jobId: job?.id, err: err?.message });
   });
 
-// Worker for Twin simulations
+  // Worker for Twin simulations
   const twinEvents = new QueueEvents(TWIN_SIM_QUEUE, { connection });
   twinEvents.on('failed', ({ jobId, failedReason }) => {
     console.error('[TwinQueueEvents] failed', { jobId, failedReason });
@@ -1422,8 +1414,7 @@ async function bootstrap() {
     console.error('[ObligationsWorker] failed', { jobId: job?.id, err: err?.message });
   });
 
-
-// Optional: sanity health ping
+  // Optional: sanity health ping
   try {
     const health = await getJson<any>(apiUrl('/health'));
     console.log('[Worker] API health', health);
